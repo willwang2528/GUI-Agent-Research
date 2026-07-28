@@ -210,3 +210,24 @@ Git 只保存研究文本、协议、代码、schema、测试与 manifest。以�
 - caches 与临时输出
 
 它们的身份由已跟踪 manifest/hash 锚定。本 checkpoint 记录的是可恢复研究状态，不冒充完整 1.7 GB 工作区镜像。
+
+本轮已生成内容提交：
+
+```text
+e86038d5d6d94b004b95be9bbd226bcebe2bc42d
+```
+
+随后执行用户授权的 `git push origin main`，但审批服务在创建 Git 进程前失败：
+
+```text
+Unknown parameter: input[13].namespace
+```
+
+因此不能声称 GitHub `main` 已更新。记录的本地 `origin/main` 仍是
+`4bbc0a365ee0fed121bc3ffef6ea1dd0e8732e40`，且可能过时。不得用其他上传通道绕过该拒绝；下次需在用户重新授权且审批服务恢复后，从记录的 publishing clone 执行：
+
+```text
+git push origin main
+```
+
+再通过远端 ref 验证结果。

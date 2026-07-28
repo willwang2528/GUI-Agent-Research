@@ -37,4 +37,4 @@ Round 6 当前推进到可恢复的 WIP：
 
 Git 只保存研究文本、协议、代码、schema、测试与 manifest。外部仓库、原始轨迹详情页、PDF 和历史压缩备份不上传；其身份由 manifest/hash 锚定。
 
-研究历史目标：[`willwang2528/GUI-Agent-Research`](https://github.com/willwang2528/GUI-Agent-Research) 的 `main`。恢复时以 `research-ledger/CURRENT_GOAL_STATE.json` 与其中指向的最新 checkpoint 为准。
+研究历史目标：[`willwang2528/GUI-Agent-Research`](https://github.com/willwang2528/GUI-Agent-Research) 的 `main`。Round 6 本地内容提交为 `e86038d`；本轮 `git push` 因审批服务内部参数错误在 Git 进程启动前失败，所以远端同步尚未确认。恢复时以 `research-ledger/CURRENT_GOAL_STATE.json` 与其中指向的最新 checkpoint 为准。
