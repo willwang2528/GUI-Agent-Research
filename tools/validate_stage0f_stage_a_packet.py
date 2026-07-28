@@ -5515,6 +5515,29 @@ def first_full_block_semantic_error(
             case_events = set(case["event_ids"])
             primary_event_id = case["primary_event_id"]
             if (
+                case["case_status"] == "independent_unmerged_paths"
+                and (
+                    primary_event_id is not None
+                    or any(
+                        events_by_id[event_id]["analysis_role"]
+                        != "sensitivity_only"
+                        for event_id in case_events
+                    )
+                )
+            ):
+                return (
+                    _block_error(
+                        stage,
+                        "SEM_A0_INDEPENDENT_PRIMARY_WITHOUT_AGGREGATOR",
+                        "independent paths require a pre-frozen case-level aggregator before any path can enter primary",
+                        location[
+                            "a0_adjudication_container_relative_path"
+                        ],
+                        "$.case_roster.%s" % case_id,
+                    ),
+                    source_categories,
+                )
+            if (
                 case["required_a1_event_ids"] != case["event_ids"]
                 or not case_events.issubset(events_by_id)
                 or any(
@@ -5614,7 +5637,12 @@ def first_full_block_semantic_error(
                     )
                     != len(case_raws)
                     or case["typed_invalid_raw_label_ids"]
-                    or primary_event_id is None
+                    or primary_event_id is not None
+                    or any(
+                        events_by_id[event_id]["analysis_role"]
+                        != "sensitivity_only"
+                        for event_id in case_events
+                    )
                     or case.get("unresolved_record_id") is not None
                     or case["agreement_status"] != derived_agreement
                 ):
@@ -7357,6 +7385,7 @@ def _full_block_authority_projection(
     primary_roster: List[Dict[str, Any]] = []
     missingness_roster: List[Dict[str, Any]] = []
     agreement_roster: List[Dict[str, Any]] = []
+    both_zero_agreement_roster: List[Dict[str, Any]] = []
     for location in manifest["locations"]:
         unit_alias = location["unit_alias"]
         boundary_id = location["boundary_location_id"]
@@ -7370,6 +7399,43 @@ def _full_block_authority_projection(
             "block_a0_adjudication",
             location["a0_adjudication_container_relative_path"],
         )
+        if all(
+            not submission["raw_labels"]
+            for submission in submissions["submissions"]
+        ):
+            both_zero_agreement_roster.append(
+                {
+                    "agreement_record_id": canonical_sha256(
+                        [
+                            "stage0f-both-zero-location-agreement-v1",
+                            unit_alias,
+                            boundary_id,
+                            location["a0_submissions_ref"],
+                        ]
+                    ),
+                    "case_id": None,
+                    "unit_alias": unit_alias,
+                    "boundary_location_id": boundary_id,
+                    "raw_label_ids": [],
+                    "annotator_aliases": utf8_sorted(
+                        submission["annotator_alias"]
+                        for submission in submissions["submissions"]
+                    ),
+                    "agreement_status": "raw_negative_agreement",
+                    "agreement_scope": (
+                        "LOCATION_OPPORTUNITY_PRESENCE_ONLY"
+                    ),
+                    "both_zero": True,
+                    "a": 0,
+                    "b": 0,
+                    "c": 0,
+                    "d": 1,
+                    "agreement_source": "PRE_ADJUDICATION_RAW_ONLY",
+                    "matcher_authority": (
+                        "SELF_SEALED_EMPTY_ROSTERS_SYNTAX_ONLY"
+                    ),
+                }
+            )
         disposition_by_raw = {
             item["a0_raw_label_id"]: item
             for item in adjudication["raw_label_dispositions"]
@@ -7466,6 +7532,21 @@ def _full_block_authority_projection(
                         "primary_row_present": False,
                     }
                 )
+            elif (
+                case["case_status"] == "independent_unmerged_paths"
+                and case["primary_event_id"] is None
+            ):
+                missingness_roster.append(
+                    {
+                        "case_id": case["case_id"],
+                        "raw_label_ids": case["raw_label_ids"],
+                        "missingness_type": (
+                            "INDEPENDENT_PATHS_NO_FROZEN_AGGREGATOR"
+                        ),
+                        "primary_row_present": False,
+                    }
+                )
+    agreement_roster.extend(both_zero_agreement_roster)
     rosters = {
         "R_raw": raw_roster,
         "C_cases": case_roster,

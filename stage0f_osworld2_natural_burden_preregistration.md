@@ -435,18 +435,68 @@ unresolved 不产生 primary boolean，但保留在 denominator、missingness �
 
 #### 5.2.2 Case formation 与 agreement denominator
 
-同一 location 内的 raw case partition 必须由 outcome-blind、预冻结 matcher 机械产生，而不能由 adjudicator 任意拆分或合并。最终 matcher artifact 至少绑定：
+同一 location 内的 raw case partition 不能由 adjudicator 任意拆分或合并。但开放世界 raw labels 的 event identity 本身是待测命题，不能把 maximum-cardinality 或 deterministic raw-id tie-break 当作语义 oracle。
 
-- matcher executable 与 hash；
-- 全部 candidate edges；
-- selected maximum-cardinality matching；
-- ordinal/semantic tie-break trace；
-- unmatched raw roster；
-- 机械重算后的 exact case partition。
-
-当前 v0.6 实现尚无该 matcher，必须输出：
+对两位 annotator 的完整 raw-envelope rosters，必须先区分：
 
 ```text
+L_all, R_all         = 全部 externally committed envelopes
+L_typed, R_typed     = parser-valid envelopes
+L_invalid, R_invalid = parser-invalid envelopes
+P_review             = L_typed × R_typed
+P_invalid            = 含任一 typed-invalid endpoint 的其余 cross pairs
+```
+
+`P_review` 与 `P_invalid` 合并后必须覆盖完整 `L_all × R_all`；`P_invalid` 机械写 `NOT_COMPARABLE_TYPED_INVALID` 并进入 R/M/bounds。不得由 anchor、embedding similarity 或 accepted-edge list 先过滤 raw 或 pair。未锚定事件、typed-invalid raw envelope 与 empty submission 都必须保留。
+
+每个 `P_review` pair 必须由两位与 A0/A1/Stage-B 角色隔离、outcome/action-blind 的 identity reviewers 独立判断：
+
+```text
+SAME_ATOMIC_EVENT
+DIFFERENT_ATOMIC_EVENT
+SPLIT_MERGE_OR_NONATOMIC
+INSUFFICIENT_IDENTITY_EVIDENCE
+```
+
+Reviewer 只能读取由独立 redaction executable 生成的 estimand-blind identity packet：允许 pre-action observation evidence 与 selectors；禁止 `p_old/p_new`、source labels、normative difference、affected obligations、boundary-type label、raw typed projection、candidate action、A1 与 outcome。否则 matching 会条件化于待评估 agreement。
+
+两位均判断 SAME 只得到 `DUAL_REVIEWER_CONCORDANT_SAME`，不是语义事实。只有 identity/selector verifier、atomicity authority 与 reviewer-independence authority 均 VERIFIED 时才能升级为 `SUPPORTED_SAME`；两位均判断 DIFFERENT 得到 `DUAL_REVIEWER_CONCORDANT_DIFFERENT`；其余为 `AMBIGUOUS`。第三方 adjudication 不能把 identity disagreement 覆盖成 primary certainty。
+
+分别构造：
+
+```text
+G_minus = SUPPORTED_SAME edges
+G_plus  = SUPPORTED_SAME + partial-authority concordant/ambiguous edges
+```
+
+若同一 raw 对多个 partners 都是 `SUPPORTED_SAME`，relation nonfunctional，整个 component unresolved。含 split/merge/non-atomic relation 的 component 必须输出 `SEGMENTATION_ESTIMAND_UNIDENTIFIABLE`，不能用 one-to-one matching 给出 numeric event-level upper。
+
+其余 component 的合法 completion space必须覆盖所有满足 `G_minus subset G subset G_plus` 的 graph completions及其中全部合法 correspondences；不能只枚举固定 `G_plus` 的 maximum matchings，因为 ambiguous edges 也可能为假。每个 maximum-cardinality claim必须有 minimum-vertex-cover certificate。UTF-8 tie-break只能选择 sensitivity representative，不能决定 primary partition、point agreement或 E ledger。
+
+`K2,2` 的两个 maximum matchings 可在相同 cardinality 下令 exact agreement 从 2 变 0；`1:n` 或 `n:1` 还表示 split/merge 而非普通 tie。因此：
+
+- 只有 isolated `1:1 SUPPORTED_SAME` component，且无 ambiguous、split/merge、typed-invalid 或 unanchored raw，才可形成 paired primary-eligible case；
+- ambiguous connected component 的全部 raws 进入 unresolved 与 M，不得抽取 canonical pair；
+- pairing-dependent estimand 必须在所有合法 graph completions/correspondences 上报告 `[min,max]`；
+- singleton 只有在其与另一侧全部 `P_review` pairs 均为双人一致 DIFFERENT、且 independence/input authority VERIFIED 时才能进入 `b` 或 `c`；
+- 两侧 externally committed rosters 与 complete-search attestations 均为空时，必须生成 location-level `d=1` negative-agreement row，但不得制造 fake event case；
+- `d` 只表示 location-level opportunity-presence negative agreement，不是开放世界 event-level true-negative count。
+
+最终 matcher stack 至少绑定：
+
+- content-addressed raw identity envelopes，以及 raw submissions 完成后、任何 A1/action/outcome reveal 前的 external roster receipt；
+- estimand-blind identity-review packets、redaction executable/hash；
+- matcher spec/executable/schema hashes；
+- 完整 `L_all×R_all` pair ledger 与 typed-invalid coverage；
+- 双人 identity judgments、角色与 exposure receipts；
+- `G_minus/G_plus`、maximum matching 与 certificates；
+- ambiguous components、all-optima bounds、singletons 与 both-zero rows；
+- exact case/M partition、A0 barrier ref 与 trusted pre-reveal time。
+
+当前实现没有 matchable raw identity envelope、pairwise identity judgments、external raw-roster authority 或 matcher executable，必须输出：
+
+```text
+identity_correspondence = NOT_ESTABLISHED_NO_MATCHABLE_RAW_IDENTITY
 agreement_completeness = NOT_ESTABLISHED_NO_FROZEN_CASE_MATCHER
 ```
 
@@ -460,7 +510,7 @@ human-resolved disagreement    → raw disagreement
 independent paths              → raw disagreement
 paired unresolved              → raw disagreement
 singleton raw                  → one-sided disagreement，进入 b 或 c
-双方均无 event 的 valid location → negative agreement
+双方均无 event 的 valid location → location-level negative agreement，d=1
 ```
 
 positive agreement 中的 `a/b/c` 必须来自冻结 matcher 的 raw matched/unmatched records。第三方裁决后的结果不得把 `b/c` 改写为 `a`，也不得把 singleton 或 unresolved 从 denominator 删除。
@@ -821,7 +871,7 @@ simultaneous uncertainty procedure、multiplicity family、单调/非单调处�
 | launched-run / retry / publication-selection 完整 | **UNKNOWN / T1-Run LOCKED** | 无 run id、seed、launch/retry/exclusion manifest；缺少证明不等于证明官方筛选 |
 | 逐 unit replay 可用性 | **PARTIAL** | 48 份本地 archived HTML bytes 可被当前本地 parser 投影；47/48 有 replay JSON，共 9,138 steps；Task 050 × MiniMax 为 explicit no-step。source origin authenticity、trusted capture time、screenshot bytes 与 timeline alignment 均未证明 |
 | 逐 unit normative truth / evaluator provenance | **PENDING** | release-tagged task/evaluator truth 尚未逐运行绑定；不能由 replay availability 代替 |
-| Stage A outcome-blind measurement implementation | **REVISE / V2 SYNTHETIC MECHANICS GREEN；PROTOCOL NOT FROZEN** | v2 当前 94/94 Stage A tests、28/28 strict schemas 通过，并覆盖 X58–X64 与 R02/R04/R06/R07/R09/R10/R11/R12/R15；但无 frozen case matcher、human dual-entailment records、external raw/time/access/role authority，且 mechanical verifier 仅为 synthetic typed claim |
+| Stage A outcome-blind measurement implementation | **REVISE / V2 SYNTHETIC MECHANICS GREEN；IDENTITY SPEC NARROW ACCEPT；PROTOCOL NOT FROZEN** | Stage A、raw-envelope、identity-packet 与 protocol/detail/ARIS 组合回归 118/118 通过；independent paths 强制 E=0/M=1，both-zero d row 已保留。Round 8 证明 maximum matching 不能识别 semantic identity；draft pair packet 仍存在 value-channel leakage，且无 raw semantic verifier、pair ledger、review isolation、frozen matcher 或 external authority |
 | 盲标本体可靠 | **PENDING** | 尚未执行 pilot |
 | 行为负担 | **PENDING** | 尚未标注，禁止使用作者 challenge tags 代替 |
 | research-decision thresholds | **PROVISIONALLY SPECIFIED；MEASUREMENT STACK NOT FROZEN；NOT EXECUTED** | global task/interface/deficit upper 与 joint structural completions 已进入 decision card；只有 schema/validator/dependency lock/manifest 完整并经 fresh review 后才能 freeze |

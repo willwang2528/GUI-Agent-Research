@@ -199,15 +199,18 @@ iff
 
 ## 5. 最小实现顺序
 
-1. 冻结 A0 raw-case matcher；当前 Stage A v2 的 94/94 synthetic mechanics 尚不能建立自然 case denominator；
-2. 建立双人独立 human evidence-entailment records 与外部 raw-roster/time/access/role receipts；
-3. 将当前 local archived HTML projection adapter 接到 screenshot、initial observation、task/evaluator 与 source-origin authority；
-4. captured catalog universe adapter；
-5. forward-only temporal receipt infrastructure；
-6. forward-only ACL/access/principal/role infrastructure；
-7. release task/evaluator/screenshot authority；
-8. integrated production full-block validator；
-9. 最后才接 bounds production mode。
+1. 实现 packet-local opaque aliases 与 executable redactor；仅靠 forbidden field names 不能阻断 value-channel leakage；
+2. 实现 cross-artifact raw-envelope semantic verifier，重算 bytes/hash/parser/envelope id，并验证 interval、selector、cutoff 与 cross-annotator membership；
+3. 建立完整 `L_all × R_all` pair ledger、双人独立 identity-review receipts、session isolation 与 `G_minus/G_plus` all-completion bounds；
+4. 只有前三项通过后才允许冻结 A0 raw-case matcher；当前 118/118 组合回归仍不能建立自然 case denominator；
+5. 建立外部 raw-roster/time/access/role receipts；
+6. 将当前 local archived HTML projection adapter 接到 screenshot、initial observation、task/evaluator 与 source-origin authority；
+7. captured catalog universe adapter；
+8. forward-only temporal receipt infrastructure；
+9. forward-only ACL/access/principal/role infrastructure；
+10. release task/evaluator/screenshot authority；
+11. integrated production full-block validator；
+12. 最后才接 bounds production mode。
 
 不能先把 synthetic bounds 接到真实数据再补 authority；那只会把内部一致性包装成 research evidence。
 

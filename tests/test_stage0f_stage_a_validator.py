@@ -2425,7 +2425,7 @@ class SyntheticFullBlock:
             "2026-07-28T09:05:10+08:00"
         )
         primary_event = retarget_path(
-            artifact, primary_raw_id, "primary", "primary"
+            artifact, primary_raw_id, "sensitivity_only", "primary"
         )
         secondary_event = retarget_path(
             secondary,
@@ -2477,7 +2477,7 @@ class SyntheticFullBlock:
                 "case_status": "independent_unmerged_paths",
                 "event_ids": event_ids,
                 "required_a1_event_ids": event_ids,
-                "primary_event_id": event_ids[0],
+                "primary_event_id": None,
                 "agreement_status": "raw_substantive_disagreement",
                 "independent_path_group_id": path_group_id,
             }
@@ -3108,13 +3108,22 @@ class ValidatorTests(unittest.TestCase):
             result["measurement_rosters"]["counts"]["P_a1_paths"], 2
         )
         self.assertEqual(
-            result["measurement_rosters"]["counts"]["E_primary_rows"], 1
+            result["measurement_rosters"]["counts"]["E_primary_rows"], 0
+        )
+        self.assertEqual(
+            result["measurement_rosters"]["counts"]["M_missingness"], 1
+        )
+        self.assertEqual(
+            result["measurement_rosters"]["M_missingness"][0][
+                "missingness_type"
+            ],
+            "INDEPENDENT_PATHS_NO_FROZEN_AGGREGATOR",
         )
         roles = {
             item["analysis_role"]
             for item in result["measurement_rosters"]["P_a1_paths"]
         }
-        self.assertEqual(roles, {"primary", "sensitivity_only"})
+        self.assertEqual(roles, {"sensitivity_only"})
 
     def test_unresolved_case_remains_in_missingness_pass(self) -> None:
         block = self.full_block(1)
@@ -3130,7 +3139,7 @@ class ValidatorTests(unittest.TestCase):
                 "P_a1_paths": 0,
                 "E_primary_rows": 0,
                 "M_missingness": 1,
-                "agreement": 1,
+                "agreement": 3,
             },
         )
         self.assertEqual(
@@ -3162,7 +3171,7 @@ class ValidatorTests(unittest.TestCase):
                 "P_a1_paths": 0,
                 "E_primary_rows": 0,
                 "M_missingness": 1,
-                "agreement": 1,
+                "agreement": 3,
             },
         )
         self.assertEqual(
@@ -3267,9 +3276,13 @@ class ValidatorTests(unittest.TestCase):
         )
         sensitivity["analysis_role"] = "primary"
         block.refresh_full_links()
+        result = block.validate()
         self.assert_case(
-            "v2_r07_independent_primary_double_count",
-            block.validate(),
+            "v2_r07_independent_primary_double_count", result
+        )
+        self.assertEqual(
+            result["errors"][0]["code"],
+            "SEM_A0_INDEPENDENT_PRIMARY_WITHOUT_AGGREGATOR",
         )
 
     def test_v2_r09_unresolved_primary_leak(self) -> None:
@@ -3431,6 +3444,26 @@ class ValidatorTests(unittest.TestCase):
         result = block.validate()
         self.assertTrue(result["valid"], result)
         self.assertEqual(result["derived_source_categories"], {})
+        self.assertEqual(
+            result["measurement_rosters"]["counts"]["agreement"], 3
+        )
+        self.assertEqual(
+            result["measurement_rosters"]["counts"]["C_cases"], 0
+        )
+        self.assertTrue(
+            all(
+                item["agreement_status"]
+                == "raw_negative_agreement"
+                and item["agreement_scope"]
+                == "LOCATION_OPPORTUNITY_PRESENCE_ONLY"
+                and item["both_zero"]
+                and item["d"] == 1
+                and item["case_id"] is None
+                for item in result["measurement_rosters"][
+                    "agreement"
+                ]
+            )
+        )
         block.fixed["block_location_manifest"]["locations"].pop()
         block.write()
         result = block.validate()

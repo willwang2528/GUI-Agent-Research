@@ -55,7 +55,7 @@
   {"case_id":"v2_r02_raw_fanout","expected_stage":"cross_artifact_semantics","expected_code":"SEM_A0_RAW_CASE_PARTITION"},
   {"case_id":"v2_r04_frankenstein_resolution","expected_stage":"cross_artifact_semantics","expected_code":"SEM_A0_RESOLUTION_FRANKENSTEIN"},
   {"case_id":"v2_r06_path_denominator_loss","expected_stage":"cross_artifact_semantics","expected_code":"SEM_A1_EXACT_EVENT_SET"},
-  {"case_id":"v2_r07_independent_primary_double_count","expected_stage":"cross_artifact_semantics","expected_code":"SEM_A0_CASE_ROSTER"},
+  {"case_id":"v2_r07_independent_primary_double_count","expected_stage":"cross_artifact_semantics","expected_code":"SEM_A0_INDEPENDENT_PRIMARY_WITHOUT_AGGREGATOR"},
   {"case_id":"v2_r09_unresolved_primary_leak","expected_stage":"cross_artifact_semantics","expected_code":"SEM_A0_CASE_ROSTER"},
   {"case_id":"v2_r10_post_adjudication_agreement_inflation","expected_stage":"cross_artifact_semantics","expected_code":"SEM_A0_CASE_ROSTER"},
   {"case_id":"v2_r12_mechanical_pointer_only","expected_stage":"cross_artifact_semantics","expected_code":"SEM_MECHANICAL_GROUNDING_INCOMPLETE"},

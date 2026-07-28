@@ -1,7 +1,7 @@
 {
   "workflow": "aris-adapted-research-refine",
-  "phase": "round_7_case_matcher_and_external_authority_revise",
-  "round": 7,
+  "phase": "round_8_identity_envelope_and_partial_identification_revise",
+  "round": 8,
   "review_agents": [
     "round4_protocol_redteam",
     "stagea_schema_impl",
@@ -16,14 +16,17 @@
     "production_authority_gap_audit",
     "stagea_v2_adjudication_impl",
     "stagea_v2_spec_redteam",
-    "archived_adapter_v11_review"
+    "archived_adapter_v11_review",
+    "matcher_formal_spec",
+    "matcher_first_principles_redteam",
+    "matcher_integration_audit"
   ],
   "last_score": null,
-  "last_verdict": "STAGEA_V2_SYNTHETIC_ACCEPT_LOCAL_BYTES_ACCEPT_PROTOCOL_REVISE_PRODUCTION_REJECTED",
-  "review_independence": "multi-round: implementation, independent executable spec red-team, R11 rebuttal and narrow repair, independent hash/replay acceptance, archived-source overclaim challenge, and independent v1.1 local-byte audit",
+  "last_verdict": "PAIRWISE_IDENTITY_SPEC_NARROW_ACCEPT_SCHEMA_MECHANICS_ACCEPT_MATCHER_FREEZE_REJECT_STEP1_REJECT",
+  "review_independence": "multi-round: formal specification, first-principles counterexamples, integration audit, root rebuttal and repair, then a second executable value-channel attack and narrow re-review",
   "acceptance_status": "not_ready",
   "status": "in_progress",
-  "blocking_gate": "Stage A v2 specified synthetic mechanics pass 94/94 Stage A tests, 104/104 combined tests, and 28/28 strict schemas after independent R11 review. They still lack a frozen raw-case matcher, dual independent human entailment records, and external raw-roster/time/access/role authority. The archived adapter passes 22/22 tests over 48 local pages and 9138 literal steps, but establishes only LOCAL_ARCHIVED_BYTES_LITERAL_PROJECTION_VERIFIED. Natural behavioral burden remains unmeasured.",
-  "next_artifact": "freeze the A0 raw-case matcher: candidate-edge universe, admissibility predicate, maximum-cardinality objective, deterministic tie-break, unmatched/singleton/both-zero rules, and pre-adjudication a-b-c agreement ledger with executable negative controls",
-  "timestamp": "2026-07-28T13:58:31+08:00"
+  "blocking_gate": "Round 8 proves that maximum matching and deterministic tie-break cannot identify natural event correspondence: greedy changes agreement from 0.5 to 1.0, while K2,2 maximum matchings change exact agreement from 2 to 0. The partial-identification spec is narrowly accepted, but schema-valid value channels still leak substantive labels and raw identity/hash/selector/atomicity authority is absent. The two draft schemas are not integrated into the main loader, barrier, pair ledger, or bounds consumer. Natural behavioral burden remains unmeasured.",
+  "next_artifact": "implement a packet-local opaque-alias redactor and cross-artifact raw-envelope semantic verifier, then build the complete L_all x R_all pair ledger with dual isolated reviewers before any matcher freeze",
+  "timestamp": "2026-07-28T14:50:53+08:00"
 }
