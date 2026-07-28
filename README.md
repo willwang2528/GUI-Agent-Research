@@ -35,4 +35,4 @@ Round 5 只推进了测量机械层：
 
 Git 只保存研究文本、协议、代码、schema、测试与 manifest。外部仓库、原始轨迹详情页、PDF 和历史压缩备份不上传；其身份由 manifest/hash 锚定。
 
-研究历史目标：[`willwang2528/GUI-Agent-Research`](https://github.com/willwang2528/GUI-Agent-Research) 的 `main`。以包含上述最新 checkpoint 的远端 `main` commit 为恢复入口。
+研究历史目标：[`willwang2528/GUI-Agent-Research`](https://github.com/willwang2528/GUI-Agent-Research) 的 `main`。本地内容快照 commit `00ce947` 已生成，但审批服务在 `git push` 执行前失败；因此远端同步尚未确认。恢复时以 `research-ledger/CURRENT_GOAL_STATE.json` 为准。
