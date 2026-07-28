@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_block_a0_submissions.schema.json",
+  "title": "Stage 0F exactly-two independent A0 submissions for one location",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "canonicalization",
+    "artifact_id",
+    "unit_alias",
+    "boundary_location_id",
+    "a0_input_ref",
+    "schema_bundle_sha256",
+    "codebook_sha256",
+    "submissions",
+    "frozen_at"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "block_a0_submissions"
+    },
+    "schema_version": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/schema_version"
+    },
+    "canonicalization": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/canonicalization"
+    },
+    "artifact_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
+    },
+    "unit_alias": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/unit_alias"
+    },
+    "boundary_location_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "a0_input_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "schema_bundle_sha256": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "codebook_sha256": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "submissions": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "annotator_alias",
+          "raw_labels",
+          "frozen_at"
+        ],
+        "properties": {
+          "annotator_alias": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/opaque_id"
+          },
+          "raw_labels": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "a0_raw_label_id",
+                "semantic_payload"
+              ],
+              "properties": {
+                "a0_raw_label_id": {
+                  "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+                },
+                "semantic_payload": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "p_old_proposition_id",
+                    "p_new_proposition_id",
+                    "update_source_labels",
+                    "normative_action_difference",
+                    "affected_obligation_ids",
+                    "boundary_type"
+                  ],
+                  "properties": {
+                    "p_old_proposition_id": {
+                      "type": "string",
+                      "pattern": "^PROP-[A-Z0-9-]+$"
+                    },
+                    "p_new_proposition_id": {
+                      "type": "string",
+                      "pattern": "^PROP-[A-Z0-9-]+$"
+                    },
+                    "update_source_labels": {
+                      "type": "array",
+                      "minItems": 1,
+                      "uniqueItems": true,
+                      "items": {
+                        "enum": [
+                          "world_truth_changed",
+                          "task_goal_changed",
+                          "previously_true_fact_newly_revealed",
+                          "explicit_corrective_feedback",
+                          "source_unidentifiable"
+                        ]
+                      }
+                    },
+                    "normative_action_difference": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "affected_obligation_ids": {
+                      "type": "array",
+                      "minItems": 1,
+                      "uniqueItems": true,
+                      "items": {
+                        "type": "string",
+                        "pattern": "^O-[A-Z0-9-]+$"
+                      }
+                    },
+                    "boundary_type": {
+                      "enum": [
+                        "action_commit",
+                        "required_action_omission",
+                        "artifact_write",
+                        "derived_computation",
+                        "block_decision"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "frozen_at": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+          }
+        }
+      }
+    },
+    "frozen_at": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+    }
+  }
+}

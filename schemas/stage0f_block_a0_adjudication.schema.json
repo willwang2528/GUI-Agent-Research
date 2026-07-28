@@ -1,0 +1,352 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_block_a0_adjudication.schema.json",
+  "title": "Stage 0F single A0-only adjudication container with zero or more events",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "canonicalization",
+    "artifact_id",
+    "unit_alias",
+    "boundary_location_id",
+    "a0_input_ref",
+    "a0_submissions_ref",
+    "raw_label_dispositions",
+    "events",
+    "adjudicator_alias",
+    "frozen_at"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "block_a0_adjudication"
+    },
+    "schema_version": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/schema_version"
+    },
+    "canonicalization": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/canonicalization"
+    },
+    "artifact_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
+    },
+    "unit_alias": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/unit_alias"
+    },
+    "boundary_location_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "a0_input_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "a0_submissions_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "raw_label_dispositions": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "a0_raw_label_id",
+              "disposition",
+              "adjudicated_event_id"
+            ],
+            "properties": {
+              "a0_raw_label_id": {
+                "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+              },
+              "disposition": {
+                "const": "adjudicated_event"
+              },
+              "adjudicated_event_id": {
+                "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "a0_raw_label_id",
+              "disposition",
+              "rejection_reason"
+            ],
+            "properties": {
+              "a0_raw_label_id": {
+                "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+              },
+              "disposition": {
+                "const": "rejected"
+              },
+              "rejection_reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        ]
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "adjudicated_event_id",
+          "a0_label_ref",
+          "a0_label_relative_path",
+          "supporting_a0_raw_label_ids",
+          "raw_support_adjudication",
+          "source_resolution"
+        ],
+        "properties": {
+          "adjudicated_event_id": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+          },
+          "a0_label_ref": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+          },
+          "a0_label_relative_path": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/relative_path"
+          },
+          "supporting_a0_raw_label_ids": {
+            "type": "array",
+            "minItems": 2,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+            }
+          },
+          "raw_support_adjudication": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "rule_id",
+              "exact_match_fields",
+              "set_union_fields",
+              "adjudicated_semantic_projection_sha256",
+              "support_semantic_payloads",
+              "disagreements"
+            ],
+            "properties": {
+              "rule_id": {
+                "const": "stage0f-a0-raw-support-adjudication-v1"
+              },
+              "exact_match_fields": {
+                "type": "array",
+                "minItems": 5,
+                "maxItems": 5,
+                "prefixItems": [
+                  {
+                    "const": "p_old_proposition_id"
+                  },
+                  {
+                    "const": "p_new_proposition_id"
+                  },
+                  {
+                    "const": "normative_action_difference"
+                  },
+                  {
+                    "const": "affected_obligation_ids"
+                  },
+                  {
+                    "const": "boundary_type"
+                  }
+                ]
+              },
+              "set_union_fields": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 1,
+                "prefixItems": [
+                  {
+                    "const": "update_source_labels"
+                  }
+                ]
+              },
+              "adjudicated_semantic_projection_sha256": {
+                "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+              },
+              "support_semantic_payloads": {
+                "type": "array",
+                "minItems": 2,
+                "uniqueItems": true,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "a0_raw_label_id",
+                    "semantic_payload_sha256",
+                    "exact_match_projection_sha256",
+                    "update_source_labels_sha256"
+                  ],
+                  "properties": {
+                    "a0_raw_label_id": {
+                      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+                    },
+                    "semantic_payload_sha256": {
+                      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+                    },
+                    "exact_match_projection_sha256": {
+                      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+                    },
+                    "update_source_labels_sha256": {
+                      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+                    }
+                  }
+                }
+              },
+              "disagreements": {
+                "type": "array",
+                "maxItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "field",
+                    "support_value_hashes",
+                    "resolution_rule",
+                    "resolved_value_sha256"
+                  ],
+                  "properties": {
+                    "field": {
+                      "const": "update_source_labels"
+                    },
+                    "support_value_hashes": {
+                      "type": "array",
+                      "minItems": 2,
+                      "uniqueItems": true,
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "a0_raw_label_id",
+                          "value_sha256"
+                        ],
+                        "properties": {
+                          "a0_raw_label_id": {
+                            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+                          },
+                          "value_sha256": {
+                            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+                          }
+                        }
+                      }
+                    },
+                    "resolution_rule": {
+                      "const": "sorted_set_union_utf8_v1"
+                    },
+                    "resolved_value_sha256": {
+                      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "source_resolution": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "status"
+                ],
+                "properties": {
+                  "status": {
+                    "const": "identified"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "status",
+                  "reason_code",
+                  "searched_scope_roster",
+                  "searched_scope_sha256",
+                  "search_result_refs"
+                ],
+                "properties": {
+                  "status": {
+                    "const": "source_unidentifiable"
+                  },
+                  "reason_code": {
+                    "type": "string",
+                    "enum": [
+                      "NO_CUTOFF_SOURCE_AFTER_FROZEN_SEARCH",
+                      "CONFLICTING_CUTOFF_SOURCES_AFTER_FROZEN_SEARCH",
+                      "SOURCE_BYTES_UNAVAILABLE_AFTER_FROZEN_SEARCH"
+                    ]
+                  },
+                  "searched_scope_roster": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "searched_scope_sha256": {
+                    "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+                  },
+                  "search_result_refs": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "artifact_ref",
+                        "relative_path"
+                      ],
+                      "properties": {
+                        "artifact_ref": {
+                          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+                        },
+                        "relative_path": {
+                          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/relative_path"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "status",
+                  "invalidity_reason"
+                ],
+                "properties": {
+                  "status": {
+                    "const": "invalid_source_measurement"
+                  },
+                  "invalidity_reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "adjudicator_alias": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/opaque_id"
+    },
+    "frozen_at": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+    }
+  }
+}

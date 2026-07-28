@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json",
+  "title": "Stage 0F finite-bounds common definitions",
+  "$defs": {
+    "schema_version": {
+      "const": "stage0f-bounds-v0.6.0-draft"
+    },
+    "canonicalization": {
+      "const": "stage0f-bounds-canonical-json-v1"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+    },
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]{1,127}$"
+    },
+    "obligation_id": {
+      "type": "string",
+      "pattern": "^O-[A-Z0-9][A-Z0-9-]{1,126}$"
+    },
+    "predicate_id": {
+      "enum": [
+        "q_B",
+        "q_C",
+        "q_env",
+        "q_env_interface",
+        "q_B_deficit",
+        "q_env_deficit"
+      ]
+    },
+    "non_deficit_predicate_id": {
+      "enum": [
+        "q_B",
+        "q_C",
+        "q_env",
+        "q_env_interface"
+      ]
+    },
+    "deficit_predicate_id": {
+      "enum": [
+        "q_B_deficit",
+        "q_env_deficit"
+      ]
+    },
+    "evidence_pointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pointer_id",
+        "artifact_id",
+        "observation_ordinal",
+        "content_sha256",
+        "projection_role",
+        "sequence_ordinal"
+      ],
+      "properties": {
+        "pointer_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "artifact_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "observation_ordinal": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "content_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "projection_role": {
+          "enum": [
+            "observation",
+            "predicate_spec",
+            "state",
+            "event_ledger",
+            "transition_spec",
+            "event_grammar",
+            "event_record"
+          ]
+        },
+        "sequence_ordinal": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "rational": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "numerator",
+        "denominator",
+        "decimal"
+      ],
+      "properties": {
+        "numerator": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "denominator": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "decimal": {
+          "type": "string",
+          "pattern": "^(?:0|[1-9][0-9]*)(?:\\.[0-9]+)?$"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_block_location_manifest.schema.json",
+  "title": "Stage 0F complete block location and A0 disposition manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "canonicalization",
+    "artifact_id",
+    "block_id",
+    "block_scope",
+    "block_frame_ref",
+    "unit_scans",
+    "locations",
+    "frozen_at"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "block_location_manifest"
+    },
+    "schema_version": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/schema_version"
+    },
+    "canonicalization": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/canonicalization"
+    },
+    "artifact_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
+    },
+    "block_id": {
+      "type": "string",
+      "pattern": "^BLOCK-[A-Z0-9-]+$"
+    },
+    "block_scope": {
+      "enum": [
+        "ontology_block_a",
+        "ontology_block_b",
+        "ontology_block_c",
+        "confirmatory_holdout",
+        "synthetic_test_only"
+      ]
+    },
+    "block_frame_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "unit_scans": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "unit_alias",
+          "scan_complete",
+          "observation_count",
+          "prefix_commit_log_relative_path",
+          "prefix_commit_log_sha256",
+          "prefix_chain_tip_sha256",
+          "stream_ledger_ref",
+          "stream_ledger_relative_path",
+          "ordinal_roster",
+          "ordinal_boundary_location_ids"
+        ],
+        "properties": {
+          "unit_alias": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/unit_alias"
+          },
+          "scan_complete": {
+            "const": true
+          },
+          "observation_count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "prefix_commit_log_relative_path": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/relative_path"
+          },
+          "prefix_commit_log_sha256": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+          },
+          "prefix_chain_tip_sha256": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+          },
+          "stream_ledger_ref": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+          },
+          "stream_ledger_relative_path": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/relative_path"
+          },
+          "ordinal_roster": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/observation_ordinal"
+            }
+          },
+          "ordinal_boundary_location_ids": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+            }
+          }
+        }
+      }
+    },
+    "locations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "unit_alias",
+          "boundary_location_id",
+          "a0_input_ref",
+          "a0_input_relative_path",
+          "a0_submissions_ref",
+          "a0_submissions_relative_path",
+          "a0_adjudication_container_ref",
+          "a0_adjudication_container_relative_path"
+        ],
+        "properties": {
+          "unit_alias": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/unit_alias"
+          },
+          "boundary_location_id": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+          },
+          "a0_input_ref": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+          },
+          "a0_input_relative_path": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/relative_path"
+          },
+          "a0_submissions_ref": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+          },
+          "a0_submissions_relative_path": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/relative_path"
+          },
+          "a0_adjudication_container_ref": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+          },
+          "a0_adjudication_container_relative_path": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/relative_path"
+          }
+        }
+      }
+    },
+    "frozen_at": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+    }
+  }
+}

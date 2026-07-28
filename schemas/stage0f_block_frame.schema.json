@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_block_frame.schema.json",
+  "title": "Stage 0F frozen full-block unit frame",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "canonicalization",
+    "artifact_id",
+    "block_id",
+    "block_scope",
+    "frame_source_ref",
+    "expected_unit_count",
+    "expected_units",
+    "frozen_at"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "block_frame"
+    },
+    "schema_version": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/schema_version"
+    },
+    "canonicalization": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/canonicalization"
+    },
+    "artifact_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
+    },
+    "block_id": {
+      "type": "string",
+      "pattern": "^BLOCK-[A-Z0-9-]+$"
+    },
+    "block_scope": {
+      "enum": [
+        "ontology_block_a",
+        "ontology_block_b",
+        "ontology_block_c",
+        "confirmatory_holdout",
+        "synthetic_test_only"
+      ]
+    },
+    "frame_source_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "expected_unit_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "expected_units": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "unit_alias",
+          "task_id",
+          "hosted_config_id",
+          "coordinator_envelope_ref",
+          "coordinator_envelope_relative_path"
+        ],
+        "properties": {
+          "unit_alias": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/unit_alias"
+          },
+          "task_id": {
+            "type": "string",
+            "pattern": "^[0-9]{3}$"
+          },
+          "hosted_config_id": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/opaque_id"
+          },
+          "coordinator_envelope_ref": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+          },
+          "coordinator_envelope_relative_path": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/relative_path"
+          }
+        }
+      }
+    },
+    "frozen_at": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+    }
+  }
+}

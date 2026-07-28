@@ -1,0 +1,44 @@
+{
+  "artifact_type": "stage0f_bounds_verifier_registry",
+  "registry_version": "stage0f-bounds-verifier-registry-v1",
+  "verifier_id": "stage0f-bounds-frozen-verifier",
+  "verifier_version": "0.1.0",
+  "executable_relative_path": "tools/stage0f_bounds_frozen_verifier.py",
+  "executable_sha256": "752ef8ac22a7ee10b3c299e330a922c577baf14088428a7b26b556664b4fc97e",
+  "semantic_helper_relative_path": "tools/stage0f_action_semantics.py",
+  "semantic_helper_sha256": "ae5eb06fbf567289e0cec73c07bd48db32758234d2fcd1c3b60c8523c98c90bf",
+  "semantic_contract_relative_path": "schemas/stage0f_bounds_action_semantics.json",
+  "semantic_contract_sha256": "9c5d9c732f4b9edacee6ba474d5e2fa72c2b6f9af9b51fc8646bfde772570258",
+  "modes": {
+    "DETERMINISTIC_PREDICATE_EVALUATOR_FALSE_V1": {
+      "required_projection_roles": [
+        "predicate_spec",
+        "event_ledger"
+      ],
+      "result_code": "TARGET_PREDICATE_FALSE",
+      "disposition": "MECHANICALLY_PREDICATE_FALSE",
+      "enabled": true,
+      "config_sha256": "eea6e9f865c4856835bbf753f0cb3b01732d0eaae67b297a4f3566c11915dd54"
+    },
+    "FROZEN_TRANSITION_TABLE_NO_OPPORTUNITY_V1": {
+      "required_projection_roles": [
+        "transition_spec",
+        "state"
+      ],
+      "result_code": "NO_REACHABLE_DECISION_BOUNDARY",
+      "disposition": "MECHANICALLY_NO_OPPORTUNITY",
+      "enabled": false,
+      "config_sha256": "24534ae9fdff9935aafb6ab71785d0176b4a8f1237b92bf60961f20e5f4d7560"
+    },
+    "TYPED_EVENT_GRAMMAR_EXCLUSION_V1": {
+      "required_projection_roles": [
+        "event_grammar",
+        "event_record"
+      ],
+      "result_code": "TARGET_EVENT_TYPE_IMPOSSIBLE",
+      "disposition": "MECHANICALLY_PREDICATE_FALSE",
+      "enabled": false,
+      "config_sha256": "ea9b9bd07a3dd2e152956824f71d24dcd7d6e4b693d5959f3a1f74d143423286"
+    }
+  }
+}

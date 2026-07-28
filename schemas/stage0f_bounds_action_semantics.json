@@ -1,0 +1,60 @@
+{
+  "artifact_type": "stage0f_bounds_action_semantic_contract",
+  "contract_version": "stage0f-action-semantics-v1",
+  "required_action_keys": [
+    "candidate_action_executed",
+    "compatible_with_p_old",
+    "compatible_with_p_new",
+    "required_action_omission",
+    "deadline_or_commit_reached"
+  ],
+  "boolean_fields": [
+    "candidate_action_executed",
+    "required_action_omission",
+    "deadline_or_commit_reached"
+  ],
+  "compatibility_fields": [
+    "compatible_with_p_old",
+    "compatible_with_p_new"
+  ],
+  "compatibility_enum": [
+    "yes",
+    "no",
+    "unidentifiable"
+  ],
+  "p_old_status_enum": [
+    "pre_update_frozen",
+    "old_state_hypothesized"
+  ],
+  "confirmed_p_old_status": "pre_update_frozen",
+  "constraints": [
+    "candidate_action_and_required_omission_mutually_exclusive",
+    "required_omission_requires_candidate_false"
+  ],
+  "executed_compatibility_truth_table": {
+    "yes|yes": "target_negative",
+    "yes|no": "target_positive",
+    "yes|unidentifiable": "unidentifiable",
+    "no|yes": "target_negative",
+    "no|no": "target_negative",
+    "no|unidentifiable": "unidentifiable",
+    "unidentifiable|yes": "unidentifiable",
+    "unidentifiable|no": "unidentifiable",
+    "unidentifiable|unidentifiable": "unidentifiable"
+  },
+  "omission_deadline_truth_table": {
+    "true": "target_positive",
+    "false": "unidentifiable"
+  },
+  "no_action_compatibility_truth_table": {
+    "yes|yes": "target_negative",
+    "yes|no": "target_negative",
+    "yes|unidentifiable": "unidentifiable",
+    "no|yes": "target_negative",
+    "no|no": "target_negative",
+    "no|unidentifiable": "unidentifiable",
+    "unidentifiable|yes": "unidentifiable",
+    "unidentifiable|no": "unidentifiable",
+    "unidentifiable|unidentifiable": "unidentifiable"
+  }
+}

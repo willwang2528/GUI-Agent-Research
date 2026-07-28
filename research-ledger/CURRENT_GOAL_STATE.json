@@ -1,0 +1,63 @@
+{
+  "schema_version": "gui-agent-memory-goal-state-v2",
+  "checkpoint_id": "2026-07-28T123302+0800",
+  "checkpoint_file": "research-ledger/checkpoints/2026-07-28T123302+0800-step1-round5-checkpoint.md",
+  "workspace": "/Users/will/research/gui_agent_memory",
+  "github_repository": "https://github.com/willwang2528/GUI-Agent-Research",
+  "github_branch": "main",
+  "thread_id": "019f8362-0542-7fb3-86f5-1f64dc9e6761",
+  "goal_status": "active",
+  "goal_complete": false,
+  "goal_blocked": false,
+  "scientific_step": 1,
+  "step_status": "in_progress",
+  "research_hypothesis": "长程 GUI 控制的 memory 必须成为可被环境证伪的行动契约；只有当 Agent 知道哪些事实必须仍然为真、为何为真以及错误后如何恢复，Memory 才真正改变能力边界。",
+  "current_verdict": [
+    "FRAME-READY",
+    "DETAIL-AVAILABILITY-PARTIAL",
+    "MEASUREMENT IMPLEMENTATION NOT READY",
+    "SYNTHETIC MECHANICS ONLY",
+    "NO SYNTHETIC FREEZE",
+    "NO BLOCK A",
+    "NO STEP 1 GO"
+  ],
+  "established": [
+    "OSWorld 2.0 catalog and confirmatory frames are frozen at 648 and 492 cells",
+    "Block A availability is 47 replay-bearing pages plus one explicit no-step page with 9138 embedded steps",
+    "full-block Stage A X58-X60 fixes pass 79 implementation tests and 27 strict schema compilations",
+    "bounds and certificate synthetic mechanics pass 33 root tests",
+    "an independent bounded reviewer accepted 22 bounds replays as synthetic mechanics only",
+    "Python 3.12.13 interpreter and project venv exist"
+  ],
+  "not_established": [
+    "natural UACF-D burden",
+    "Step 1 GO",
+    "Memory as root cause",
+    "existing-method residual",
+    "method efficacy",
+    "environment-falsification advantage",
+    "capability-boundary change",
+    "production prevalence",
+    "preventable terminal loss",
+    "Python 3.12 dependency reproducibility"
+  ],
+  "active_blockers": [
+    "fresh independent replay of Stage A X58-X60 and positive disagreement controls is pending",
+    "real published-source parser and content-fidelity authority are absent",
+    "nonrollback pre-reveal commit receipts and trusted clock are absent",
+    "trusted access logs and role-history checkpoint authority are absent",
+    "release-tagged obligation, identity, config-family, and mapping commitments are absent",
+    "real proof semantics and trusted large-world solver are absent",
+    "exact Stage 0F dependencies are not installed in the Python 3.12 venv because the approval service rejected network execution before it ran"
+  ],
+  "next_actions_in_order": [
+    "run a fresh independent Stage A replay for X58-X60 and the valid raw-source disagreement positive control",
+    "install requirements-stage0f.txt into .venv-stage0f-py312 and run pip check plus the complete validation suite",
+    "implement fail-closed real authority adapters for content fidelity, temporal precedence, access completeness, role history, and frozen universes",
+    "obtain fresh adversarial acceptance for the integrated production measurement path",
+    "only then decide whether a synthetic dry run is allowed",
+    "only after all preregistered gates permit it generate real Block A packets",
+    "use Block A and later confirmatory evidence to decide Step 1 before unlocking Steps 2-7"
+  ],
+  "resume_rule": "Read this JSON and its checkpoint first. Do not restart a broad literature survey. Do not treat test success as evidence that the natural GUI burden exists. Do not run Block A or unlock Step 2 before Step 1 GO."
+}

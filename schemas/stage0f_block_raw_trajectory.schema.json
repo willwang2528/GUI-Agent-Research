@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_block_raw_trajectory.schema.json",
+  "title": "Stage 0F authoritative normalized raw trajectory",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "canonicalization",
+    "artifact_id",
+    "raw_format",
+    "unit_alias",
+    "trajectory_id",
+    "trajectory_mode",
+    "entries",
+    "frozen_at"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "block_raw_trajectory"
+    },
+    "schema_version": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/schema_version"
+    },
+    "canonicalization": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/canonicalization"
+    },
+    "artifact_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
+    },
+    "raw_format": {
+      "const": "stage0f-block-raw-trajectory-json-v1"
+    },
+    "unit_alias": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/unit_alias"
+    },
+    "trajectory_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/opaque_id"
+    },
+    "trajectory_mode": {
+      "enum": [
+        "standard_steps",
+        "batch_tool_model_steps"
+      ]
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "observation",
+          "current_action"
+        ],
+        "properties": {
+          "observation": {
+            "$ref": "#/$defs/observation"
+          },
+          "current_action": {
+            "$ref": "#/$defs/current_action"
+          }
+        }
+      }
+    },
+    "frozen_at": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+    }
+  },
+  "$defs": {
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observation_ordinal",
+        "observed_at",
+        "assets",
+        "agent_visible_text",
+        "normalized_prior_actions",
+        "missingness"
+      ],
+      "properties": {
+        "observation_ordinal": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/observation_ordinal"
+        },
+        "observed_at": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+        },
+        "assets": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/asset_ref"
+          }
+        },
+        "agent_visible_text": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "normalized_prior_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "missingness": {
+          "enum": [
+            "none",
+            "asset_unavailable",
+            "source_gap_explicit"
+          ]
+        }
+      }
+    },
+    "current_action": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "terminal_no_action"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "action_unit",
+            "action_bytes_relative_path",
+            "action_bytes_sha256",
+            "revealed_at",
+            "subactions",
+            "next_observation_ordinal",
+            "next_observation_sha256",
+            "next_observed_at"
+          ],
+          "properties": {
+            "kind": {
+              "const": "current_action"
+            },
+            "action_unit": {
+              "enum": [
+                "single_action",
+                "batch_bundle"
+              ]
+            },
+            "action_bytes_relative_path": {
+              "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/relative_path"
+            },
+            "action_bytes_sha256": {
+              "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+            },
+            "revealed_at": {
+              "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+            },
+            "subactions": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "action_ordinal",
+                  "subaction_sha256",
+                  "first_observable_at"
+                ],
+                "properties": {
+                  "action_ordinal": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "subaction_sha256": {
+                    "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+                  },
+                  "first_observable_at": {
+                    "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+                  }
+                }
+              }
+            },
+            "next_observation_ordinal": {
+              "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/observation_ordinal"
+            },
+            "next_observation_sha256": {
+              "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+            },
+            "next_observed_at": {
+              "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

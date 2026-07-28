@@ -1,0 +1,33 @@
+{
+  "artifact": "stage0f-local-python-validation-environment",
+  "status": "LOCAL_ARTIFACT_PASS_FRESH_INSTALL_NOT_PROVEN",
+  "verified_at": "2026-07-28T11:18:00+08:00",
+  "local_environment_path": ".venv-stage0f",
+  "local_environment_tracked_by_git": false,
+  "python": {
+    "executable_origin": "/usr/bin/python3",
+    "version": "3.9.6"
+  },
+  "construction": {
+    "method": "create an empty project-local venv with --without-pip, then copy the already audited exact site-packages from the ephemeral Python 3.9 environment",
+    "network_used": false,
+    "fresh_package_install_performed": false,
+    "public_rebuild_proven": false
+  },
+  "requirements": {
+    "path": "requirements-stage0f.txt",
+    "sha256": "c6599a75adb969851de1e037ef84124f555870915b4079f88b6aeb0c3270e69c"
+  },
+  "verifier": {
+    "path": "tools/verify_stage0f_environment.py",
+    "sha256": "6d34444064987909d1b73847f85701d712bce9050e5f7574860b8cdde7055af8",
+    "id": "stage0f-python-environment-v1"
+  },
+  "verification": {
+    "verdict": "PASS",
+    "distribution_file_count": 137,
+    "distribution_content_sha256": "b63f15a507d65b08768489a0c488e6b7a366dc15339e9ebd171ca27020a379d6",
+    "full_test_suite_at_verification": "47/47 PASS"
+  },
+  "claim_ceiling": "This manifest establishes the identity and local executability of the ignored project-local environment used for mechanical tests. It does not establish a clean fresh install from public artifacts, measurement validity, a Step 1 result, or any GUI Memory scientific claim."
+}

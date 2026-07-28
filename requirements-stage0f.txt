@@ -1,4 +1,6 @@
-# Reproducible Draft 2020-12 validation environment (tested with Python 3.9.6).
+# Exact Draft 2020-12 validation dependencies.
+# Current verified artifact: Python 3.9.6.
+# Migration target: Python 3.12.13; dependency installation and tests are pending.
 attrs==26.1.0
 jsonschema==4.25.1
 jsonschema-specifications==2025.9.1

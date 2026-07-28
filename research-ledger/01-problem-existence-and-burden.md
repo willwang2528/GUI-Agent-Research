@@ -20,6 +20,8 @@
 | 2026-07-28 | Round 4b global-bound 独立反方 | partial-identification 状态、negative certificate、finite joint completion、zero denominator 与 narrow claim 被反例击穿 | 初版修订被拒绝；`NO SYNTHETIC PROTOCOL FREEZE / NO BLOCK A` |
 | 2026-07-28 | Stage A fail-closed 基础实现 | 11 个 closed Draft 2020-12 schemas；47/47 full-suite tests；29 个 one-damage negative fixtures | 只证明组件拒绝已知破坏；full-block ledger 未实现，生产路径固定 `NOT_READY` |
 | 2026-07-28 | Round 4c release 独立审计 | 检查 production bypass、decision 修复、claim ceiling、Markdown、凭据与大文件 | 允许提交 NOT_READY 检查点；拒绝 synthetic freeze、Block A 与 Step 1 GO |
+| 2026-07-28 | Python 3.12 迁移目标 | 项目内 `.venv-stage0f-py312` 已使用本机 Python 3.12.13 创建；精确依赖尚未安装 | 仅证明目标解释器存在；依赖安装被审批服务错误阻塞，全套验证仍以已审计 Python 3.9.6 环境执行，不声称 3.12 可复现 |
+| 2026-07-28 | Round 5 full-block / bounds battle | Stage A 79/79 与 strict schema 27/27；bounds root 33/33；独立 bounds bounded replay 22/22 | 仅接受指定 synthetic mechanics；Stage A fresh replay、真实 authority adapters、Python 3.12 回归与 behavioral measurement 均未完成，继续 `NO STEP 1 GO` |
 
 ## 当前第一性结论
 

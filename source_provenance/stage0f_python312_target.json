@@ -1,0 +1,38 @@
+{
+  "artifact": "stage0f-python312-migration-target",
+  "status": "INTERPRETER_READY_DEPENDENCIES_BLOCKED",
+  "recorded_at": "2026-07-28T11:27:00+08:00",
+  "target": {
+    "python_version": "3.12.13",
+    "platform": "macosx-11.0-arm64",
+    "project_environment": ".venv-stage0f-py312",
+    "project_environment_tracked_by_git": false,
+    "pip_version": "25.0.1"
+  },
+  "interpreter_source": {
+    "kind": "bundled_codex_runtime",
+    "path": "/Users/will/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+    "homebrew_formula_checked": "python@3.12",
+    "homebrew_formula_version": "3.12.13",
+    "homebrew_install_completed": false
+  },
+  "dependency_state": {
+    "requirements_path": "requirements-stage0f.txt",
+    "installed": false,
+    "last_install_attempt_at": "2026-07-28T12:30:44+08:00",
+    "last_install_command_class": "project_venv_python_-m_pip_install_exact_binary_pins",
+    "reason": "sandboxed PyPI resolution had no network; Homebrew, online pip, and a later offline uv attempt against the existing local cache all required access outside the sandbox. A renewed direct project-venv pip request after explicit user authorization was again rejected before execution by the approval service with Unknown parameter: input[13].namespace. Read-only inspection then found only typing-extensions 4.16.0 in the bundled Python 3.12 runtime and none of the remaining exact packages in the local pip or uv caches.",
+    "offline_uv_attempt_completed": false,
+    "online_pip_attempt_executed": false,
+    "forbidden_shortcut": "Do not copy Python 3.9 native extensions such as rpds into the Python 3.12 environment."
+  },
+  "migration_gate": [
+    "install every exact locked dependency into the Python 3.12 environment",
+    "run pip check",
+    "run the full test suite and both schema implementations",
+    "recompute the environment content fingerprint",
+    "replace the Python 3.9 default only after all results pass",
+    "prove a clean fresh install from recorded public artifacts before synthetic protocol freeze"
+  ],
+  "claim_ceiling": "This artifact proves that a Python 3.12.13 project interpreter exists. It does not prove that Stage 0F dependencies are installed, that tests pass on Python 3.12, that the environment is reproducible, or that any scientific gate is satisfied."
+}

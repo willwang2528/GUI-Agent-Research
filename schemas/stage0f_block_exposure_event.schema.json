@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_block_exposure_event.schema.json",
+  "title": "Stage 0F append-only full-block role and exposure event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "canonicalization",
+    "exposure_ledger_id",
+    "block_id",
+    "sequence",
+    "event_type",
+    "occurred_at",
+    "actor_alias",
+    "actor_role",
+    "exposure_operation",
+    "recipient_aliases",
+    "visible_artifacts",
+    "previous_entry_sha256",
+    "entry_sha256"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "block_exposure_event"
+    },
+    "schema_version": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/schema_version"
+    },
+    "canonicalization": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/canonicalization"
+    },
+    "exposure_ledger_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
+    },
+    "block_id": {
+      "type": "string",
+      "pattern": "^BLOCK-[A-Z0-9-]+$"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "event_type": {
+      "enum": [
+        "block_frame_frozen",
+        "location_manifest_frozen",
+        "a0_input_released",
+        "a0_raw_labels_frozen",
+        "a0_adjudication_frozen",
+        "block_a0_barrier_frozen",
+        "a1_revealed",
+        "a1_label_frozen",
+        "block_a1_barrier_frozen",
+        "stage_b_authorized",
+        "stage_b_input_released"
+      ]
+    },
+    "occurred_at": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+    },
+    "actor_alias": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/opaque_id"
+    },
+    "actor_role": {
+      "enum": [
+        "coordinator",
+        "candidate_generator",
+        "reference",
+        "a0_annotator",
+        "a0_adjudicator",
+        "a1_annotator",
+        "stage_b_annotator"
+      ]
+    },
+    "exposure_operation": {
+      "enum": [
+        "create",
+        "freeze",
+        "deliver",
+        "access",
+        "authorize"
+      ]
+    },
+    "recipient_aliases": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/opaque_id"
+      }
+    },
+    "visible_artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "artifact_class",
+          "artifact_ref"
+        ],
+        "properties": {
+          "artifact_class": {
+            "enum": [
+              "block_frame",
+              "location_manifest",
+              "a0_input",
+              "a0_raw_labels",
+              "a0_adjudication",
+              "block_a0_barrier",
+              "candidate_action",
+              "a1_reveal",
+              "a1_label",
+              "block_a1_barrier",
+              "stage_b_input"
+            ]
+          },
+          "artifact_ref": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+          }
+        }
+      }
+    },
+    "previous_entry_sha256": {
+      "oneOf": [
+        {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "entry_sha256": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    }
+  }
+}

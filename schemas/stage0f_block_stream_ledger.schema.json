@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_block_stream_ledger.schema.json",
+  "title": "Stage 0F observation-commit-current-action stream ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "canonicalization",
+    "artifact_id",
+    "unit_alias",
+    "trajectory_mode",
+    "raw_trajectory_ref",
+    "raw_trajectory_relative_path",
+    "raw_parser",
+    "entries",
+    "frozen_at"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "block_stream_ledger"
+    },
+    "schema_version": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/schema_version"
+    },
+    "canonicalization": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/canonicalization"
+    },
+    "artifact_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
+    },
+    "unit_alias": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/unit_alias"
+    },
+    "trajectory_mode": {
+      "enum": [
+        "standard_steps",
+        "batch_tool_model_steps"
+      ]
+    },
+    "raw_trajectory_relative_path": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/relative_path"
+    },
+    "raw_trajectory_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "raw_parser": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "parser_id",
+        "input_format",
+        "projection_name",
+        "executable_sha256"
+      ],
+      "properties": {
+        "parser_id": {
+          "const": "stage0f-validator:synthetic-published-trajectory-v1"
+        },
+        "input_format": {
+          "const": "stage0f-block-raw-trajectory-json-v1"
+        },
+        "projection_name": {
+          "const": "observation-current-action-v1"
+        },
+        "executable_sha256": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+        }
+      }
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "observation_ordinal",
+          "observation_sha256",
+          "observed_at",
+          "prefix_commit_entry_sha256",
+          "prefix_committed_at",
+          "current_action"
+        ],
+        "properties": {
+          "observation_ordinal": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/observation_ordinal"
+          },
+          "observation_sha256": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+          },
+          "observed_at": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+          },
+          "prefix_commit_entry_sha256": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+          },
+          "prefix_committed_at": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+          },
+          "current_action": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "terminal_no_action"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "action_unit",
+                  "action_bytes_relative_path",
+                  "action_bytes_sha256",
+                  "revealed_at",
+                  "subactions",
+                  "next_observation_ordinal",
+                  "next_observation_sha256",
+                  "next_observed_at"
+                ],
+                "properties": {
+                  "kind": {
+                    "const": "current_action"
+                  },
+                  "action_unit": {
+                    "enum": [
+                      "single_action",
+                      "batch_bundle"
+                    ]
+                  },
+                  "action_bytes_relative_path": {
+                    "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/relative_path"
+                  },
+                  "action_bytes_sha256": {
+                    "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+                  },
+                  "revealed_at": {
+                    "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+                  },
+                  "subactions": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "action_ordinal",
+                        "subaction_sha256",
+                        "first_observable_at"
+                      ],
+                      "properties": {
+                        "action_ordinal": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "subaction_sha256": {
+                          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+                        },
+                        "first_observable_at": {
+                          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+                        }
+                      }
+                    }
+                  },
+                  "next_observation_ordinal": {
+                    "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/observation_ordinal"
+                  },
+                  "next_observation_sha256": {
+                    "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+                  },
+                  "next_observed_at": {
+                    "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "frozen_at": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+    }
+  }
+}

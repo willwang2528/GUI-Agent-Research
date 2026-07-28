@@ -1,0 +1,284 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_bounds_input.schema.json",
+  "title": "Stage 0F finite-bounds mechanics input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "canonicalization",
+    "evaluation_mode",
+    "research_evidence",
+    "confirmatory_outcome_opened",
+    "measurement_stack_frozen",
+    "constraint_set_hash",
+    "proof_whitelist_hash",
+    "authority_binding",
+    "holdout_manifest",
+    "derived_event_refs",
+    "negative_certificate_artifacts"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "stage0f_bounds_input"
+    },
+    "schema_version": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/schema_version"
+    },
+    "canonicalization": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/canonicalization"
+    },
+    "evaluation_mode": {
+      "const": "SYNTHETIC_MECHANICS_ONLY"
+    },
+    "research_evidence": {
+      "const": false
+    },
+    "confirmatory_outcome_opened": {
+      "const": false
+    },
+    "measurement_stack_frozen": {
+      "const": false
+    },
+    "constraint_set_hash": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/sha256"
+    },
+    "proof_whitelist_hash": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/sha256"
+    },
+    "authority_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authority_kind",
+        "authority_sha256",
+        "frame_sha256",
+        "manifest_sha256",
+        "a0_barrier_sha256",
+        "a1_barrier_sha256",
+        "stream_roots_sha256",
+        "full_block_validator_sha256",
+        "full_block_bundle_sha256",
+        "proof_projection_sha256",
+        "structural_mapping_sha256",
+        "verifier_registry_sha256"
+      ],
+      "properties": {
+        "authority_kind": {
+          "enum": [
+            "SYNTHETIC_TRUSTED_FIXTURE",
+            "VALIDATED_FULL_BLOCK"
+          ]
+        },
+        "authority_sha256": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/sha256"
+        },
+        "frame_sha256": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/sha256"
+        },
+        "manifest_sha256": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/sha256"
+        },
+        "a0_barrier_sha256": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/sha256"
+        },
+        "a1_barrier_sha256": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/sha256"
+        },
+        "stream_roots_sha256": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/sha256"
+        },
+        "full_block_validator_sha256": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/sha256"
+        },
+        "full_block_bundle_sha256": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/sha256"
+        },
+        "proof_projection_sha256": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/sha256"
+        },
+        "structural_mapping_sha256": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/sha256"
+        },
+        "verifier_registry_sha256": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/sha256"
+        }
+      }
+    },
+    "holdout_manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifest_id",
+        "task_roster_sha256",
+        "exact_six_config_ids",
+        "exact_six_config_ids_sha256",
+        "tasks",
+        "manifest_sha256"
+      ],
+      "properties": {
+        "manifest_id": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/identifier"
+        },
+        "task_roster_sha256": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/sha256"
+        },
+        "exact_six_config_ids": {
+          "type": "array",
+          "minItems": 6,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/identifier"
+          }
+        },
+        "exact_six_config_ids_sha256": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/sha256"
+        },
+        "tasks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "task_id",
+              "configs",
+              "task_manifest_sha256"
+            ],
+            "properties": {
+              "task_id": {
+                "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/identifier"
+              },
+              "configs": {
+                "type": "array",
+                "minItems": 6,
+                "maxItems": 6,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "config_id",
+                    "unit_id",
+                    "obligation_status",
+                    "applicable_obligation_ids",
+                    "ordinal_locations",
+                    "unit_ordinal_roster_sha256",
+                    "trajectory_hash_chain_root"
+                  ],
+                  "properties": {
+                    "config_id": {
+                      "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/identifier"
+                    },
+                    "unit_id": {
+                      "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/identifier"
+                    },
+                    "obligation_status": {
+                      "enum": [
+                        "FROZEN_NONEMPTY",
+                        "MISSING_OR_EMPTY"
+                      ]
+                    },
+                    "applicable_obligation_ids": {
+                      "type": "array",
+                      "uniqueItems": true,
+                      "items": {
+                        "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/obligation_id"
+                      }
+                    },
+                    "ordinal_locations": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "observation_ordinal",
+                          "location_id",
+                          "evidence_pointers"
+                        ],
+                        "properties": {
+                          "observation_ordinal": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "location_id": {
+                            "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/identifier"
+                          },
+                          "evidence_pointers": {
+                            "type": "array",
+                            "minItems": 1,
+                            "uniqueItems": true,
+                            "items": {
+                              "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/evidence_pointer"
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "unit_ordinal_roster_sha256": {
+                      "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/sha256"
+                    },
+                    "trajectory_hash_chain_root": {
+                      "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/sha256"
+                    }
+                  },
+                  "allOf": [
+                    {
+                      "if": {
+                        "properties": {
+                          "obligation_status": {
+                            "const": "FROZEN_NONEMPTY"
+                          }
+                        },
+                        "required": [
+                          "obligation_status"
+                        ]
+                      },
+                      "then": {
+                        "properties": {
+                          "applicable_obligation_ids": {
+                            "type": "array",
+                            "minItems": 1
+                          }
+                        }
+                      },
+                      "else": {
+                        "properties": {
+                          "applicable_obligation_ids": {
+                            "type": "array",
+                            "maxItems": 0
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              "task_manifest_sha256": {
+                "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/sha256"
+              }
+            }
+          }
+        },
+        "manifest_sha256": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/sha256"
+        }
+      }
+    },
+    "derived_event_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/sha256"
+      }
+    },
+    "negative_certificate_artifacts": {
+      "type": "array",
+      "items": {
+        "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_certificate.schema.json"
+      }
+    }
+  }
+}

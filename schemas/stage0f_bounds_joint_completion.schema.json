@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_bounds_joint_completion.schema.json",
+  "title": "Stage 0F finite joint-completion IR",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "projection_id",
+    "joint_semantics",
+    "finite_location_count",
+    "finite_variable_count",
+    "free_binary_variable_count",
+    "domain_product_upper_bound_decimal",
+    "finite_nonempty",
+    "variables",
+    "implications",
+    "prohibited_operations",
+    "constraint_set_hash",
+    "completion_ir_sha256"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "stage0f_bounds_joint_completion_ir"
+    },
+    "schema_version": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/schema_version"
+    },
+    "projection_id": {
+      "enum": [
+        "Z_D",
+        "Z_env_structure"
+      ]
+    },
+    "joint_semantics": {
+      "const": "same-latent-event-or-decision-boundary existential sufficient bits"
+    },
+    "finite_location_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "finite_variable_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "free_binary_variable_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "domain_product_upper_bound_decimal": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*$"
+    },
+    "finite_nonempty": {
+      "type": "boolean"
+    },
+    "variables": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "variable_id",
+          "task_id",
+          "config_id",
+          "unit_id",
+          "location_id",
+          "predicate_id",
+          "obligation_id",
+          "domain",
+          "fixed_by"
+        ],
+        "properties": {
+          "variable_id": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/identifier"
+          },
+          "task_id": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/identifier"
+          },
+          "config_id": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/identifier"
+          },
+          "unit_id": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/identifier"
+          },
+          "location_id": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/identifier"
+          },
+          "predicate_id": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/predicate_id"
+          },
+          "obligation_id": {
+            "oneOf": [
+              {
+                "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/obligation_id"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "domain": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 2,
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                0,
+                1
+              ]
+            }
+          },
+          "fixed_by": {
+            "enum": [
+              "CONFIRMED_DIRECT_EVIDENCE",
+              "EFFECTIVE_MECHANICAL_NEGATIVE_CERTIFICATE",
+              "JOINT_IMPLICATION_PROPAGATION",
+              "UNRESOLVED_FINITE_COMPLETION"
+            ]
+          }
+        }
+      }
+    },
+    "implications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "antecedent_variable_id",
+          "consequent_variable_id",
+          "constraint_kind"
+        ],
+        "properties": {
+          "antecedent_variable_id": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/identifier"
+          },
+          "consequent_variable_id": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/identifier"
+          },
+          "constraint_kind": {
+            "const": "antecedent_leq_consequent"
+          }
+        }
+      }
+    },
+    "prohibited_operations": {
+      "const": [
+        "MARGINAL_MULTIPLICATION",
+        "MARGINAL_ADDITION",
+        "CROSS_EVENT_FIELD_STITCHING",
+        "CROSS_LOCATION_WITNESS_STITCHING"
+      ]
+    },
+    "constraint_set_hash": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/sha256"
+    },
+    "completion_ir_sha256": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_bounds_common.schema.json#/$defs/sha256"
+    }
+  }
+}

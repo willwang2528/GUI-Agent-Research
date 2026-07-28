@@ -1,0 +1,227 @@
+{
+  "artifact_type": "stage0f_bounds_one_damage_case_roster",
+  "research_evidence": false,
+  "confirmatory_outcome_opened": false,
+  "cases": [
+    {
+      "case_id": "E17-MISSING-CONFIG",
+      "mutation": "certificate_drop_config",
+      "expected": "certificate=0"
+    },
+    {
+      "case_id": "E17-DUPLICATE-CONFIG",
+      "mutation": "certificate_duplicate_config",
+      "expected": "certificate=0"
+    },
+    {
+      "case_id": "E18-MISSING-ORDINAL",
+      "mutation": "certificate_drop_ordinal_proof",
+      "expected": "certificate=0"
+    },
+    {
+      "case_id": "E18-RENUMBERED-ORDINAL",
+      "mutation": "certificate_renumber_ordinal",
+      "expected": "certificate=0"
+    },
+    {
+      "case_id": "E18-STALE-ROSTER-HASH",
+      "mutation": "certificate_stale_roster_hash",
+      "expected": "certificate=0"
+    },
+    {
+      "case_id": "E18-STALE-CHAIN",
+      "mutation": "certificate_stale_chain_root",
+      "expected": "certificate=0"
+    },
+    {
+      "case_id": "E19-HUMAN-NOT-FOUND",
+      "mutation": "proof_mode_human_not_found",
+      "expected": "certificate=0"
+    },
+    {
+      "case_id": "E19-REFERENCE-NOT-FOUND",
+      "mutation": "proof_mode_reference_not_found",
+      "expected": "certificate=0"
+    },
+    {
+      "case_id": "E19-SEARCH-NONE",
+      "mutation": "proof_mode_search_returned_none",
+      "expected": "certificate=0"
+    },
+    {
+      "case_id": "E20-MISSING-VERIFIER-BYTES",
+      "mutation": "proof_drop_verifier_output",
+      "expected": "certificate=0"
+    },
+    {
+      "case_id": "E20-STALE-VERIFIER-HASH",
+      "mutation": "proof_stale_verifier_output_hash",
+      "expected": "certificate=0"
+    },
+    {
+      "case_id": "E20-STALE-POINTER",
+      "mutation": "proof_stale_direct_pointer",
+      "expected": "certificate=0"
+    },
+    {
+      "case_id": "E20-MISSING-DIRECT-POINTER",
+      "mutation": "proof_drop_direct_pointer",
+      "expected": "certificate=0"
+    },
+    {
+      "case_id": "E21-CONFIRMED-CONFLICT",
+      "mutation": "confirmed_b_conflicts_q_b_certificate",
+      "expected": "certificate=0 lower=1"
+    },
+    {
+      "case_id": "E22-PREDICATE-SLOT-SEPARATION",
+      "mutation": "q_c_artifact_only",
+      "expected": "q_B remains uncertified"
+    },
+    {
+      "case_id": "E23-SAME-LOCATION-NO-STITCH",
+      "mutation": "same_location_two_events_split_world_b_interface",
+      "expected": "WORLD-and-B-and-interface=0"
+    },
+    {
+      "case_id": "E24-CROSS-LOCATION-NO-STITCH",
+      "mutation": "cross_location_split_b_interface",
+      "expected": "same-event C lower=0"
+    },
+    {
+      "case_id": "E25-ENV-DEFICIT-NO-STITCH",
+      "mutation": "same_location_split_world_and_unmet",
+      "expected": "WORLD-and-B-and-unmet lower=0"
+    },
+    {
+      "case_id": "E26-EMPTY-OBLIGATION",
+      "mutation": "empty_obligation_with_deficit_certificate",
+      "expected": "certificate=0 lower=0 upper=1"
+    },
+    {
+      "case_id": "E27-MISSING-CONFIG-DENOMINATOR",
+      "mutation": "manifest_drop_one_config",
+      "expected": "UNIDENTIFIABLE and six-config denominator retained"
+    },
+    {
+      "case_id": "E28-NO-DETECTION-NO-CERTIFICATE",
+      "mutation": "empty_events_and_certificates_82_tasks",
+      "expected": "detected=0 global=82 C0-B=INCONCLUSIVE"
+    },
+    {
+      "case_id": "E29-C-STRADDLE",
+      "mutation": "seven_c_lower_global_82",
+      "expected": "C0-C=INCONCLUSIVE"
+    },
+    {
+      "case_id": "E35-SOURCE-UNKNOWN",
+      "mutation": "source_unknown_without_certificate",
+      "expected": "environment lower unchanged global possibility retained"
+    },
+    {
+      "case_id": "E35-INVALID-SOURCE",
+      "mutation": "invalid_source_without_certificate",
+      "expected": "environment lower unchanged global possibility retained"
+    },
+    {
+      "case_id": "X36-SELF-ATTESTED-OUTPUT",
+      "mutation": "caller_replaces_verifier_output_and_reseals",
+      "expected": "certificate=0"
+    },
+    {
+      "case_id": "X36-EVIDENCE-BYTE-PERTURBATION",
+      "mutation": "authority_evidence_bytes_single_byte_change",
+      "expected": "certificate=0"
+    },
+    {
+      "case_id": "X37-RESEALED-TRUNCATED-ORDINAL",
+      "mutation": "packet_drops_ordinal_and_reseals",
+      "expected": "UNIDENTIFIABLE external authority mismatch"
+    },
+    {
+      "case_id": "X37-RESEALED-UNIT-REASSIGNMENT",
+      "mutation": "packet_swaps_unit_identity_and_reseals",
+      "expected": "UNIDENTIFIABLE external authority mismatch"
+    },
+    {
+      "case_id": "X38-BARE-PRESTITCHED-EVENT",
+      "mutation": "caller_adds_observed_joint_event",
+      "expected": "schema invalid and lower unchanged"
+    },
+    {
+      "case_id": "X39-DELETE-REQUIRED-POINTER",
+      "mutation": "proof_projection_delete",
+      "expected": "certificate=0"
+    },
+    {
+      "case_id": "X39-REPLACE-REQUIRED-POINTER",
+      "mutation": "proof_projection_replace",
+      "expected": "certificate=0"
+    },
+    {
+      "case_id": "X39-REORDER-REQUIRED-POINTER",
+      "mutation": "proof_projection_reorder",
+      "expected": "certificate=0"
+    },
+    {
+      "case_id": "X39-STALE-EVIDENCE-BYTES",
+      "mutation": "proof_projection_stale_bytes",
+      "expected": "certificate=0"
+    },
+    {
+      "case_id": "X40-UNBOUND-STRUCTURAL-MAPPING",
+      "mutation": "structural_mapping_unmapped",
+      "expected": "structural verdict UNIDENTIFIABLE"
+    },
+    {
+      "case_id": "X40-LARGE-FREE-SPACE-NO-SOLVER",
+      "mutation": "completion_exceeds_enumeration_limit",
+      "expected": "structural verdict UNIDENTIFIABLE"
+    },
+    {
+      "case_id": "X42-BOOLEAN-LAUNDERING",
+      "mutation": "event_ledger_adds_target_false_boolean",
+      "expected": "authority load fails"
+    },
+    {
+      "case_id": "X44-OBLIGATION-DENOMINATOR-RESEAL",
+      "mutation": "packet_replaces_applicable_obligation_and_reseals",
+      "expected": "UNIDENTIFIABLE external authority mismatch"
+    },
+    {
+      "case_id": "X45-UNIT-TASK-REASSIGNMENT-RESEAL",
+      "mutation": "packet_swaps_units_across_tasks_and_reseals",
+      "expected": "UNIDENTIFIABLE external authority mismatch"
+    },
+    {
+      "case_id": "X49-STRUCTURAL-PARTITION-REWRITE",
+      "mutation": "rewrite_structural_labels_after_external_commitment",
+      "expected": "authority load fails under original expected hash"
+    },
+    {
+      "case_id": "X53-RUNTIME-AUTHORITY-MUTATION",
+      "mutation": "mutate_loaded_event_without_changing_external_commitment",
+      "expected": "immutable mutation rejected and bypass detected"
+    },
+    {
+      "case_id": "X54-A1-SUMMARY-ACTION-DIVERGENCE",
+      "mutation": "a1_summary_positive_but_action_semantics_negative",
+      "expected": "authority load fails before event derivation"
+    },
+    {
+      "case_id": "X55-MODEL-FAMILY-CODEBOOK-REWRITE",
+      "mutation": "swap_config_a_and_d_model_families",
+      "expected": "authority load fails frozen codebook exact match"
+    },
+    {
+      "case_id": "X56-MALFORMED-ACTION-FAILS-NEGATIVE",
+      "mutation": "missing_or_unknown_action_fields_fall_through_negative",
+      "expected": "authority load fails and no negative certificate"
+    },
+    {
+      "case_id": "X57-OMISSION-SEMANTICS-DRIFT",
+      "mutation": "reject_upstream_valid_omission_old_yes_new_no",
+      "expected": "positive control loads and derives confirmed positive"
+    }
+  ]
+}

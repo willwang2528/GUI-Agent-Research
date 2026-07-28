@@ -25,6 +25,42 @@ jq: error: Cannot index array with string "tasks"
 
 ---
 
+## [ERR-20260728-041] stage0f_unittest_selector_typo
+
+**Logged**: 2026-07-28T18:45:00+08:00
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+An initial targeted unittest command used two guessed method names that do not
+exist in `ValidatorTests`.
+
+### Error
+```text
+AttributeError: type object 'ValidatorTests' has no attribute
+'test_full_synthetic_block_mechanics_pass'
+```
+
+### Context
+- No implementation code ran in the failed selection.
+- `rg` identified the actual methods as
+  `test_synthetic_full_block_two_event_mechanics_pass` and
+  `test_e10_empty_submissions_no_event_location`.
+
+### Suggested Fix
+Resolve exact unittest selectors from source before running targeted methods.
+
+### Metadata
+- Reproducible: yes
+- Related Files: tests/test_stage0f_stage_a_validator.py
+
+### Resolution
+- **Resolved**: 2026-07-28T18:46:00+08:00
+- **Notes**: Re-ran both exact methods successfully.
+
+---
+
 ## [ERR-20260722-013] github_git_transport_empty_checkout
 
 **Logged**: 2026-07-22T22:45:00+08:00
@@ -1386,6 +1422,7 @@ Unknown parameter: 'input[13].namespace'
 - The failure happened before any remote update.
 - The local commit is not evidence that GitHub `main` changed.
 - Safety rules prohibit switching to another write channel after this rejection without renewed explicit user approval after disclosure.
+- The user then gave renewed explicit authorization for exact commit `ad3a3349d42f0bedbd142ae8c4d160c16ef1a7f6`; the approval service still failed with the same internal parameter error before `git push` executed.
 
 ### Suggested Fix
 Obtain renewed explicit user authorization after reporting this exact blocker, then retry only `git push origin main` from the audited temporary publishing clone and verify local HEAD against the remote ref.
@@ -1393,5 +1430,176 @@ Obtain renewed explicit user authorization after reporting this exact blocker, t
 ### Metadata
 - Reproducible: yes
 - Related Files: README.md, research-ledger/, refine-logs/
+- Recurrence-Count: 2
+
+---
+
+## [ERR-20260728-039] python312_homebrew_and_dependency_approval_failure
+
+**Logged**: 2026-07-28T11:27:00+08:00
+**Priority**: medium
+**Status**: in_progress
+**Area**: infra
+
+### Summary
+The user requested Python 3.12 for future experiments. Homebrew identified `python@3.12` version 3.12.13, but installation and the later locked-dependency installation could not pass the broken escalation service.
+
+### Error
+```text
+Homebrew cache:
+Operation not permitted @ dir_s_mkdir - /Users/will/Library/Caches/Homebrew/api/formula
+
+Sandboxed pip:
+Failed to establish a new connection: [Errno 8] nodename nor servname provided
+
+Escalation:
+Unknown parameter: 'input[13].namespace'
+```
+
+### Context
+- A bundled Python 3.12.13 interpreter was already available in the Codex runtime.
+- `.venv-stage0f-py312` was created successfully from that interpreter.
+- The project venv currently has Python 3.12.13 and pip 25.0.1, but not the locked Stage 0F packages.
+- Python 3.9 native extensions must not be copied into the 3.12 environment.
+- A later `uv pip install --offline` attempt was deliberately limited to the existing local cache, but the same approval-service `input[13].namespace` failure occurred before `uv` could run outside the sandbox.
+- After the user explicitly authorized obtaining Python 3.12, a direct
+  `.venv-stage0f-py312/bin/python -m pip install --only-binary=:all:` request
+  was rejected before execution by the same approval-service parameter error.
+- Read-only inspection found only `typing-extensions==4.16.0` in the bundled
+  Python 3.12 runtime and no matching local pip/uv artifacts for the other
+  five locked distributions, so no local exact-dependency path exists.
+
+### Suggested Fix
+When the approval service is functional, install the exact lock into `.venv-stage0f-py312`, run `pip check`, run the full suite and both schema validators, recompute the environment fingerprint, and then make 3.12 the default.
+
+### Metadata
+- Reproducible: yes
+- Related Files: requirements-stage0f.txt, source_provenance/stage0f_python312_target.json
+- Recurrence-Count: 3
+- Last-Seen: 2026-07-28
+
+---
+
+## [ERR-20260728-040] python39_py_compile_cache_permission
+
+**Logged**: 2026-07-28T18:10:00+08:00
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+`py_compile` tried to create its cache under a sandbox-blocked macOS user cache path.
+
+### Error
+```
+PermissionError: [Errno 1] Operation not permitted:
+'/Users/will/Library/Caches/com.apple.python/Users/will/research'
+```
+
+### Context
+- Command: `.venv-stage0f/bin/python -m py_compile tools/validate_stage0f_stage_a_packet.py`
+- Python: 3.9.6 in the project Stage-0F environment.
+- Direct module import and all 20 Draft 2020-12 schema meta-checks succeeded, so this was a bytecode-cache destination failure rather than a source syntax failure.
+
+### Suggested Fix
+Set `PYTHONPYCACHEPREFIX` to a writable `/private/tmp` directory, or use direct import/unittest when bytecode output is unnecessary.
+
+### Metadata
+- Reproducible: yes
+- Related Files: tools/validate_stage0f_stage_a_packet.py, tools/stage0f_bounds_mechanics.py, tests/test_stage0f_bounds_mechanics.py
+- Recurrence-Count: 2
+- Last-Seen: 2026-07-28
+
+### Resolution
+- **Resolved**: 2026-07-28T18:10:00+08:00
+- **Notes**: Continued with direct module import; future compile checks use a writable cache prefix. Recurrence during the bounds-mechanics audit was resolved with `PYTHONPYCACHEPREFIX=/private/tmp/stage0f-pycache`.
+
+---
+
+## [ERR-20260728-042] cross_file_patch_context_mismatch
+
+**Logged**: 2026-07-28T19:05:00+08:00
+**Priority**: low
+**Status**: resolved
+**Area**: tooling
+
+### Summary
+One `apply_patch` attempted to remove a test-file line while still inside a
+fixture-file update hunk, so context verification failed without changing
+files.
+
+### Error
+```text
+apply_patch verification failed: Failed to find expected lines
+```
+
+### Suggested Fix
+Use an explicit `*** Update File` boundary for every file in a multi-file
+patch.
+
+### Resolution
+- **Resolved**: 2026-07-28T19:05:00+08:00
+- **Notes**: Reissued the patch with separate file headers; tests passed.
+
+---
+
+## [ERR-20260728-043] unittest_class_name_mismatch
+
+**Logged**: 2026-07-28T20:15:00+08:00
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+A targeted unittest invocation used an assumed class name instead of the
+test module's declared class name.
+
+### Error
+```text
+AttributeError: module 'tests.test_stage0f_bounds_mechanics' has no
+attribute 'BoundsMechanicsTest'
+```
+
+### Suggested Fix
+Resolve the class with `rg '^class .*Test'` before constructing a dotted
+target.
+
+### Metadata
+- Reproducible: yes
+- Related Files: tests/test_stage0f_bounds_mechanics.py
+
+### Resolution
+- **Resolved**: 2026-07-28T20:16:00+08:00
+- **Notes**: Reran the X61 target with `Stage0FBoundsMechanicsTests`; it passed.
+
+---
+
+## [ERR-20260728-044] frozen_authority_test_sequence_type
+
+**Logged**: 2026-07-28T20:20:00+08:00
+**Priority**: low
+**Status**: resolved
+**Area**: tests
+
+### Summary
+Two legacy assertions expected mutable lists after X53 made trusted authority
+sequences recursively immutable tuples.
+
+### Error
+```text
+AssertionError: (...) != [...]
+```
+
+### Suggested Fix
+Assert the frozen tuple contract for authority-owned sequences; thaw only at
+the JSON packet/output boundary.
+
+### Metadata
+- Reproducible: yes
+- Related Files: tests/test_stage0f_bounds_mechanics.py, tools/stage0f_bounds_mechanics.py
+
+### Resolution
+- **Resolved**: 2026-07-28T20:22:00+08:00
+- **Notes**: Updated X38 and X44 to assert immutable tuple values.
 
 ---

@@ -27,7 +27,7 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 from urllib.parse import urlparse
 
 try:
@@ -50,6 +50,27 @@ CANONICALIZATION = "stage0f-canonical-json-v1"
 PREFIX_PAYLOAD_SERIALIZATION = "stage0f-a0-prefix-payload-v1"
 LOCATION_SERIALIZATION = "stage0f-boundary-location-v1"
 ADJUDICATED_EVENT_SERIALIZATION = "stage0f-adjudicated-event-id-v1"
+BLOCK_A0_RAW_LABEL_SERIALIZATION = "stage0f-block-a0-raw-label-id-v1"
+A0_RAW_SUPPORT_ADJUDICATION_RULE = (
+    "stage0f-a0-raw-support-adjudication-v1"
+)
+A0_RAW_EXACT_MATCH_FIELDS = (
+    "p_old_proposition_id",
+    "p_new_proposition_id",
+    "normative_action_difference",
+    "affected_obligation_ids",
+    "boundary_type",
+)
+A0_RAW_SET_UNION_FIELDS = ("update_source_labels",)
+BLOCK_EXPOSURE_ENTRY_SERIALIZATION = "stage0f-block-exposure-entry-v1"
+RAW_TRAJECTORY_FORMAT = "stage0f-block-raw-trajectory-json-v1"
+RAW_TRAJECTORY_PARSER_ID = (
+    "stage0f-validator:synthetic-published-trajectory-v1"
+)
+RAW_TRAJECTORY_PROJECTION = "observation-current-action-v1"
+SYNTHETIC_PUBLISHED_TRAJECTORY_FORMAT = (
+    "stage0f-synthetic-published-trajectory-v1"
+)
 
 ARTIFACT_FILES: Mapping[str, str] = {
     "coordinator_envelope": "coordinator_envelope.json",
@@ -70,13 +91,38 @@ SCHEMA_FILES: Mapping[str, str] = {
     "audit_event": "stage0f_audit_event.schema.json",
     "prefix_commit": "stage0f_prefix_commit.schema.json",
     "block_barrier": "stage0f_block_barrier.schema.json",
+    "block_frame": "stage0f_block_frame.schema.json",
+    "block_location_manifest": "stage0f_block_location_manifest.schema.json",
+    "block_raw_trajectory": "stage0f_block_raw_trajectory.schema.json",
+    "block_stream_ledger": "stage0f_block_stream_ledger.schema.json",
+    "block_a0_submissions": "stage0f_block_a0_submissions.schema.json",
+    "block_a0_adjudication": "stage0f_block_a0_adjudication.schema.json",
+    "source_search_result": "stage0f_source_search_result.schema.json",
+    "block_a1_barrier": "stage0f_block_a1_barrier.schema.json",
+    "stage_b_gate": "stage0f_stage_b_gate.schema.json",
+    "block_exposure_event": "stage0f_block_exposure_event.schema.json",
+    "role_history": "stage0f_role_history.schema.json",
     "omission_interval": "stage0f_omission_interval.schema.json",
 }
 
 AUDIT_LOG_FILE = "audit_events.ndjson"
 PREFIX_COMMIT_LOG_FILE = "prefix_commits.ndjson"
 BLOCK_BARRIER_FILE = "block_barrier.json"
+BLOCK_FRAME_FILE = "block_frame.json"
+BLOCK_LOCATION_MANIFEST_FILE = "block_location_manifest.json"
+BLOCK_A1_BARRIER_FILE = "block_a1_barrier.json"
+STAGE_B_GATE_FILE = "stage_b_gate.json"
+BLOCK_EXPOSURE_LOG_FILE = "block_exposure_events.ndjson"
+ROLE_HISTORY_FILE = "role_history.json"
 OMISSION_INTERVAL_FILE = "omission_interval.json"
+BLOCK_FIXED_FILES: Mapping[str, str] = {
+    "block_frame": BLOCK_FRAME_FILE,
+    "block_location_manifest": BLOCK_LOCATION_MANIFEST_FILE,
+    "block_barrier": BLOCK_BARRIER_FILE,
+    "block_a1_barrier": BLOCK_A1_BARRIER_FILE,
+    "stage_b_gate": STAGE_B_GATE_FILE,
+    "role_history": ROLE_HISTORY_FILE,
+}
 STAGE_ORDER = (
     "duplicate_key_rejection",
     "schema_meta_validation",
@@ -350,6 +396,163 @@ def adjudicated_event_id(preimage: Mapping[str, Any]) -> str:
     return canonical_sha256(adjudicated_event_payload(preimage))
 
 
+def block_a0_raw_label_id(
+    unit_alias: str,
+    boundary_location_id_value: str,
+    schema_bundle_hash: str,
+    codebook_hash: str,
+    annotator_alias: str,
+    semantic_payload: Mapping[str, Any],
+) -> str:
+    """Derive a raw A0 id from an outcome-blind frozen preimage."""
+
+    return canonical_sha256(
+        [
+            BLOCK_A0_RAW_LABEL_SERIALIZATION,
+            unit_alias,
+            boundary_location_id_value,
+            schema_bundle_hash,
+            codebook_hash,
+            annotator_alias,
+            semantic_payload,
+        ]
+    )
+
+
+def a0_raw_exact_match_projection(
+    semantic_payload: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Normalize the raw fields that adjudication is not allowed to change."""
+
+    return {
+        "p_old_proposition_id": semantic_payload[
+            "p_old_proposition_id"
+        ],
+        "p_new_proposition_id": semantic_payload[
+            "p_new_proposition_id"
+        ],
+        "normative_action_difference": semantic_payload[
+            "normative_action_difference"
+        ],
+        "affected_obligation_ids": utf8_sorted(
+            semantic_payload["affected_obligation_ids"]
+        ),
+        "boundary_type": semantic_payload["boundary_type"],
+    }
+
+
+def a0_label_exact_match_projection(
+    label: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Project an adjudicated label onto the immutable raw-support fields."""
+
+    return {
+        "p_old_proposition_id": label["p_old"]["proposition_id"],
+        "p_new_proposition_id": label["p_new"]["proposition_id"],
+        "normative_action_difference": label[
+            "normative_action_difference"
+        ],
+        "affected_obligation_ids": utf8_sorted(
+            label["affected_obligation_ids"]
+        ),
+        "boundary_type": label["adjudicated_event_preimage"][
+            "boundary_type"
+        ],
+    }
+
+
+def a0_label_source_projection(label: Mapping[str, Any]) -> List[str]:
+    """Return the canonical set-valued update-source projection."""
+
+    return utf8_sorted(
+        {
+            item["label"]
+            for item in label["update_source_evidence"]
+        }
+    )
+
+
+def expected_raw_support_adjudication(
+    label: Mapping[str, Any],
+    support_raws: Sequence[Mapping[str, Any]],
+) -> Dict[str, Any]:
+    """Recompute the frozen v1 raw-support adjudication record.
+
+    Five semantic fields are consensus requirements and therefore cannot be
+    changed by adjudication.  ``update_source_labels`` is the sole allowed
+    disagreement field; its deterministic resolution is UTF-8-sorted set
+    union, and any disagreement must be represented explicitly.
+    """
+
+    ordered_raws = sorted(
+        support_raws,
+        key=lambda item: item["a0_raw_label_id"].encode("utf-8"),
+    )
+    support_records: List[Dict[str, Any]] = []
+    source_records: List[Dict[str, str]] = []
+    source_values: List[List[str]] = []
+    for raw in ordered_raws:
+        payload = raw["semantic_payload"]
+        normalized_sources = utf8_sorted(
+            set(payload["update_source_labels"])
+        )
+        source_hash = canonical_sha256(normalized_sources)
+        support_records.append(
+            {
+                "a0_raw_label_id": raw["a0_raw_label_id"],
+                "semantic_payload_sha256": canonical_sha256(payload),
+                "exact_match_projection_sha256": canonical_sha256(
+                    a0_raw_exact_match_projection(payload)
+                ),
+                "update_source_labels_sha256": source_hash,
+            }
+        )
+        source_records.append(
+            {
+                "a0_raw_label_id": raw["a0_raw_label_id"],
+                "value_sha256": source_hash,
+            }
+        )
+        source_values.append(normalized_sources)
+    resolved_sources = utf8_sorted(
+        {
+            source
+            for values in source_values
+            for source in values
+        }
+    )
+    disagreement = len(
+        {canonical_sha256(values) for values in source_values}
+    ) > 1
+    adjudicated_projection = {
+        "exact_match_projection": a0_label_exact_match_projection(label),
+        "update_source_labels": a0_label_source_projection(label),
+    }
+    return {
+        "rule_id": A0_RAW_SUPPORT_ADJUDICATION_RULE,
+        "exact_match_fields": list(A0_RAW_EXACT_MATCH_FIELDS),
+        "set_union_fields": list(A0_RAW_SET_UNION_FIELDS),
+        "adjudicated_semantic_projection_sha256": canonical_sha256(
+            adjudicated_projection
+        ),
+        "support_semantic_payloads": support_records,
+        "disagreements": (
+            [
+                {
+                    "field": "update_source_labels",
+                    "support_value_hashes": source_records,
+                    "resolution_rule": "sorted_set_union_utf8_v1",
+                    "resolved_value_sha256": canonical_sha256(
+                        resolved_sources
+                    ),
+                }
+            ]
+            if disagreement
+            else []
+        ),
+    }
+
+
 def chained_entry_sha256(entry: Mapping[str, Any]) -> str:
     preimage = dict(entry)
     preimage.pop("entry_sha256", None)
@@ -358,6 +561,12 @@ def chained_entry_sha256(entry: Mapping[str, Any]) -> str:
 
 def audit_entry_sha256(event: Mapping[str, Any]) -> str:
     return chained_entry_sha256(event)
+
+
+def block_exposure_entry_sha256(event: Mapping[str, Any]) -> str:
+    preimage = dict(event)
+    preimage.pop("entry_sha256", None)
+    return canonical_sha256([BLOCK_EXPOSURE_ENTRY_SERIALIZATION, preimage])
 
 
 def schema_bundle_sha256(schemas: Mapping[str, Any]) -> str:
@@ -2368,29 +2577,6 @@ def bundle_digest(artifacts: Mapping[str, Any]) -> str:
     return canonical_sha256(["stage0f-measurement-bundle-v1", entries])
 
 
-def task_bundle_digest(
-    barrier: Mapping[str, Any],
-    units: Sequence[Mapping[str, Any]],
-) -> str:
-    unit_entries = sorted(
-        [
-            [
-                unit["a0_input"]["unit_alias"],
-                bundle_digest(unit),
-            ]
-            for unit in units
-        ],
-        key=lambda item: item[0].encode("utf-8"),
-    )
-    return canonical_sha256(
-        [
-            "stage0f-task-measurement-bundle-v1",
-            canonical_sha256(barrier),
-            unit_entries,
-        ]
-    )
-
-
 def verdict(
     valid: bool,
     errors: Sequence[Mapping[str, Any]],
@@ -2429,379 +2615,18 @@ def verdict(
     return result
 
 
-def _task_verdict(
-    valid: bool,
-    errors: Sequence[Mapping[str, Any]],
-    completed_stages: Sequence[str],
-    barrier: Optional[Mapping[str, Any]] = None,
-    units: Optional[Sequence[Mapping[str, Any]]] = None,
-) -> Dict[str, Any]:
-    result = verdict(valid, errors, completed_stages)
-    if barrier is not None and units is not None:
-        result["bundle_sha256"] = task_bundle_digest(barrier, units)
-        result["bundle_scope"] = "task_all_six_configs"
-        result["unit_count"] = len(units)
-    return result
-
-
-def _load_task_components(
-    task_dir: Path,
-    schema_dir: Path,
-) -> Tuple[
-    Optional[Mapping[str, Any]],
-    Optional[Mapping[str, Any]],
-    Optional[List[Tuple[Path, Mapping[str, Any]]]],
-    List[Dict[str, Any]],
-]:
-    stage = STAGE_ORDER[0]
-    barrier_path = task_dir / TASK_BARRIER_FILE
-    if not barrier_path.is_file():
-        return None, None, None, [
-            make_error(
-                stage,
-                "TASK_BARRIER_FILE_MISSING",
-                "task-level validation requires task_barrier.json",
-                TASK_BARRIER_FILE,
-            )
-        ]
-    try:
-        barrier = load_json_no_duplicates(barrier_path)
-    except DuplicateKeyError as exc:
-        return None, None, None, [
-            make_error(
-                stage,
-                "DUPLICATE_JSON_KEY",
-                str(exc),
-                TASK_BARRIER_FILE,
-                "$.%s" % exc.key,
-            )
-        ]
-    except (OSError, json.JSONDecodeError, ValueError) as exc:
-        return None, None, None, [
-            make_error(stage, "INVALID_JSON", str(exc), TASK_BARRIER_FILE)
-        ]
-
-    units_dir = task_dir / "units"
-    unit_dirs = (
-        sorted(
-            [path for path in units_dir.iterdir() if path.is_dir()],
-            key=lambda path: path.name.encode("utf-8"),
-        )
-        if units_dir.is_dir()
-        else []
-    )
-    loaded_units: List[Tuple[Path, Mapping[str, Any]]] = []
-    schemas: Optional[Mapping[str, Any]] = None
-    errors: List[Dict[str, Any]] = []
-    for unit_dir in unit_dirs:
-        loaded, unit_errors = load_bundle_and_schemas(unit_dir, schema_dir)
-        if unit_errors:
-            for error in unit_errors:
-                copied = dict(error)
-                artifact = copied.get("artifact")
-                if artifact:
-                    copied["artifact"] = "units/%s/%s" % (
-                        unit_dir.name,
-                        artifact,
-                    )
-                errors.append(copied)
-            continue
-        assert loaded is not None
-        if schemas is None:
-            schemas = loaded["schemas"]
-        loaded_units.append((unit_dir, loaded["artifacts"]))
-    if errors:
-        return barrier, schemas, loaded_units, errors
-    if schemas is None:
-        schemas = {}
-        for name, filename in SCHEMA_FILES.items():
-            path = schema_dir / filename
-            if not path.is_file():
-                errors.append(
-                    make_error(
-                        stage,
-                        "SCHEMA_FILE_MISSING",
-                        "required schema file is missing",
-                        filename,
-                    )
-                )
-                continue
-            try:
-                schemas[name] = load_json_no_duplicates(path)
-            except DuplicateKeyError as exc:
-                errors.append(
-                    make_error(
-                        stage,
-                        "DUPLICATE_JSON_KEY",
-                        str(exc),
-                        filename,
-                        "$.%s" % exc.key,
-                    )
-                )
-            except (OSError, json.JSONDecodeError, ValueError) as exc:
-                errors.append(
-                    make_error(stage, "INVALID_JSON", str(exc), filename)
-                )
-    return barrier, schemas, loaded_units, errors
-
-
-def validate_task_barrier_instance(
-    barrier: Mapping[str, Any],
-    schemas: Mapping[str, Any],
-) -> List[Dict[str, Any]]:
-    stage = STAGE_ORDER[2]
-    assert Draft202012Validator is not None
-    assert FormatChecker is not None
-    validator = Draft202012Validator(
-        schemas["task_barrier"],
-        registry=make_registry(schemas),
-        format_checker=FormatChecker(),
-    )
-    return [
-        make_error(
-            stage,
-            "SCHEMA_INSTANCE_INVALID",
-            error.message,
-            TASK_BARRIER_FILE,
-            json_path(error.absolute_path),
-        )
-        for error in sorted(
-            validator.iter_errors(barrier),
-            key=lambda item: list(item.absolute_path),
-        )
-    ]
-
-
-def first_task_barrier_semantic_error(
-    barrier: Mapping[str, Any],
-    units: Sequence[Mapping[str, Any]],
-) -> Optional[Dict[str, Any]]:
-    stage = STAGE_ORDER[3]
-    if len(units) != 6:
-        return make_error(
-            stage,
-            "SEM_TASK_BARRIER_UNIT_COUNT",
-            "task barrier requires exactly six physically present hosted-config unit bundles",
-            TASK_BARRIER_FILE,
-            "$.unit_freezes",
-        )
-    aliases = [unit["a0_input"]["unit_alias"] for unit in units]
-    if len(aliases) != len(set(aliases)):
-        return make_error(
-            stage,
-            "SEM_TASK_BARRIER_UNIT_ALIAS_COLLISION",
-            "six unit bundles require distinct unit aliases",
-            TASK_BARRIER_FILE,
-        )
-    task_ids = {
-        unit["coordinator_envelope"]["identity"]["task_id"] for unit in units
-    }
-    if task_ids != {barrier["task_id"]}:
-        return make_error(
-            stage,
-            "SEM_TASK_BARRIER_TASK_MISMATCH",
-            "all six coordinator envelopes must refer to the same frozen task",
-            TASK_BARRIER_FILE,
-            "$.task_id",
-        )
-    hosted_configs = [
-        unit["coordinator_envelope"]["identity"]["hosted_config_id"]
-        for unit in units
-    ]
-    if len(hosted_configs) != len(set(hosted_configs)):
-        return make_error(
-            stage,
-            "SEM_TASK_BARRIER_CONFIG_COLLISION",
-            "the barrier must cover six distinct hosted configs",
-            TASK_BARRIER_FILE,
-            "$.unit_freezes",
-        )
-    freeze_entries = barrier["unit_freezes"]
-    freeze_aliases = [entry["unit_alias"] for entry in freeze_entries]
-    if len(freeze_aliases) != len(set(freeze_aliases)) or set(freeze_aliases) != set(aliases):
-        return make_error(
-            stage,
-            "SEM_TASK_BARRIER_FREEZE_SET",
-            "barrier freeze set must contain every and only the six physical units",
-            TASK_BARRIER_FILE,
-            "$.unit_freezes",
-        )
-    entry_by_alias = {entry["unit_alias"]: entry for entry in freeze_entries}
-    sealed_at = parse_timestamp(barrier["sealed_at"])
-    latest_a0 = max(
-        parse_timestamp(unit["a0_label"]["frozen_at"]) for unit in units
-    )
-    if latest_a0 >= sealed_at:
-        return make_error(
-            stage,
-            "SEM_TASK_BARRIER_SEALED_EARLY",
-            "barrier may seal only after all six A0 labels are frozen",
-            TASK_BARRIER_FILE,
-            "$.sealed_at",
-        )
-    for unit in units:
-        alias = unit["a0_input"]["unit_alias"]
-        entry = entry_by_alias[alias]
-        if entry["hosted_config_id"] != unit["coordinator_envelope"]["identity"]["hosted_config_id"]:
-            return make_error(
-                stage,
-                "SEM_TASK_BARRIER_CONFIG_LINK",
-                "barrier hosted config does not match its coordinator envelope",
-                TASK_BARRIER_FILE,
-                "$.unit_freezes",
-            )
-        if entry["a0_label_frozen_at"] != unit["a0_label"]["frozen_at"]:
-            return make_error(
-                stage,
-                "SEM_TASK_BARRIER_FREEZE_TIME",
-                "barrier freeze timestamp does not match the A0 label artifact",
-                TASK_BARRIER_FILE,
-                "$.unit_freezes",
-            )
-        authorization_event = next(
-            event
-            for event in unit["audit_events"]
-            if event["event_type"] == "a1_reveal_authorized"
-        )
-        if sealed_at >= parse_timestamp(authorization_event["occurred_at"]):
-            return make_error(
-                stage,
-                "SEM_TASK_BARRIER_A1_OPENED_EARLY",
-                "no A1 authorization may occur before the all-six A0 barrier seals",
-                TASK_BARRIER_FILE,
-                "$.sealed_at",
-            )
-        if sealed_at >= parse_timestamp(unit["a1_reveal"]["revealed_at"]):
-            return make_error(
-                stage,
-                "SEM_TASK_BARRIER_A1_OPENED_EARLY",
-                "no A1 reveal may occur before the all-six A0 barrier seals",
-                TASK_BARRIER_FILE,
-                "$.sealed_at",
-            )
-    return None
-
-
-def first_task_barrier_hash_error(
-    barrier: Mapping[str, Any],
-    units: Sequence[Mapping[str, Any]],
-) -> Optional[Dict[str, Any]]:
-    stage = STAGE_ORDER[4]
-    barrier_hash = canonical_sha256(barrier)
-    entry_by_alias = {
-        entry["unit_alias"]: entry for entry in barrier["unit_freezes"]
-    }
-    for unit in units:
-        alias = unit["a0_input"]["unit_alias"]
-        entry = entry_by_alias[alias]
-        expected_values = {
-            "coordinator_envelope_ref": artifact_ref(
-                unit["coordinator_envelope"]
-            ),
-            "a0_input_ref": artifact_ref(unit["a0_input"]),
-            "a0_label_ref": artifact_ref(unit["a0_label"]),
-        }
-        for key, expected in expected_values.items():
-            if entry[key] != expected:
-                return make_error(
-                    stage,
-                    "HASH_TASK_BARRIER_ARTIFACT_REF",
-                    "task barrier contains a stale or substituted A0 artifact reference",
-                    TASK_BARRIER_FILE,
-                    "$.unit_freezes.%s.%s" % (alias, key),
-                )
-        if entry["prefix_chain_tip_sha256"] != unit["a0_input"]["prefix_chain_tip_sha256"]:
-            return make_error(
-                stage,
-                "HASH_TASK_BARRIER_PREFIX_TIP",
-                "task barrier must bind each unit rolling-prefix chain tip",
-                TASK_BARRIER_FILE,
-                "$.unit_freezes.%s.prefix_chain_tip_sha256" % alias,
-            )
-        if unit["a1_reveal"]["task_barrier_commitment_sha256"] != barrier_hash:
-            return make_error(
-                stage,
-                "HASH_TASK_BARRIER_A1_LINK",
-                "A1 reveal does not bind the all-six A0 barrier content",
-                ARTIFACT_FILES["a1_reveal"],
-                "$.task_barrier_commitment_sha256",
-            )
-    return None
 
 
 def validate_task_bundle(task_dir: Path, schema_dir: Path) -> Dict[str, Any]:
-    barrier, schemas, loaded_units, errors = _load_task_components(
-        task_dir,
-        schema_dir,
-    )
-    if errors:
-        return _task_verdict(False, errors, [])
-    assert barrier is not None
-    assert schemas is not None
-    assert loaded_units is not None
-    units = [artifacts for _, artifacts in loaded_units]
-    completed = [STAGE_ORDER[0]]
-
-    if JSONSCHEMA_IMPORT_ERROR is not None:
-        error = make_error(
-            STAGE_ORDER[1],
-            "DEPENDENCY_JSONSCHEMA_UNAVAILABLE",
-            "Install the exact requirements-stage0f.txt environment; no hand-written Draft 2020-12 fallback is permitted: %s"
-            % JSONSCHEMA_IMPORT_ERROR,
-        )
-        return _task_verdict(False, [error], completed, barrier, units)
-
-    errors = validate_schema_meta(schemas)
-    if errors:
-        return _task_verdict(False, errors, completed, barrier, units)
-    completed.append(STAGE_ORDER[1])
-
-    errors = validate_task_barrier_instance(barrier, schemas)
-    if not errors:
-        for unit in units:
-            errors = validate_instances(unit, schemas)
-            if errors:
-                break
-    if errors:
-        return _task_verdict(False, errors, completed, barrier, units)
-    completed.append(STAGE_ORDER[2])
-
-    for unit in units:
-        error = first_semantic_error(unit)
-        if error:
-            return _task_verdict(False, [error], completed, barrier, units)
-    error = first_task_barrier_semantic_error(barrier, units)
-    if error:
-        return _task_verdict(False, [error], completed, barrier, units)
-    completed.append(STAGE_ORDER[3])
-
-    for unit_dir, unit in loaded_units:
-        error = first_content_hash_error(unit, schemas, unit_dir)
-        if error:
-            return _task_verdict(False, [error], completed, barrier, units)
-    error = first_task_barrier_hash_error(barrier, units)
-    if error:
-        return _task_verdict(False, [error], completed, barrier, units)
-    completed.append(STAGE_ORDER[4])
-
-    for unit in units:
-        error = first_chain_exposure_error(unit)
-        if error:
-            return _task_verdict(False, [error], completed, barrier, units)
-    completed.append(STAGE_ORDER[5])
-    return _task_verdict(True, [], completed, barrier, units)
-
-
-def validate_task_bundle(task_dir: Path, schema_dir: Path) -> Dict[str, Any]:
-    """Deprecated task gate: a task-local barrier is never sufficient."""
+    """Legacy task entry point: permanently fail closed."""
 
     return verdict(
         False,
         [
             make_error(
                 STAGE_ORDER[3],
-                "SEM_BLOCK_BARRIER_CONTEXT_REQUIRED",
-                "task-level gating is prohibited; validate a full ontology/holdout block",
+                "FULL_BLOCK_REQUIRED",
+                "legacy task validation can never PASS; use validate_full_block with an externally frozen frame commitment",
                 str(task_dir),
             )
         ],
@@ -2842,117 +2667,3712 @@ def validate_bundle(bundle_dir: Path, schema_dir: Path) -> Dict[str, Any]:
         return verdict(False, [error], completed, artifacts)
     error = make_error(
         STAGE_ORDER[3],
-        "SEM_BLOCK_BARRIER_CONTEXT_REQUIRED",
-        "a single unit can never PASS: all block units/locations, A0 raw labels, and A0-only adjudications must freeze before any A1 reveal",
+        "FULL_BLOCK_REQUIRED",
+        "a single unit can never PASS; production validation requires the externally committed full block",
     )
     return verdict(False, [error], completed, artifacts)
 
 
-def validate_block_bundle(block_dir: Path, schema_dir: Path) -> Dict[str, Any]:
-    """Fail-closed block entry point pending the full multi-location ledger.
+def _block_error(
+    stage: str,
+    code: str,
+    message: str,
+    artifact: Optional[str] = None,
+    path: Optional[str] = None,
+) -> Dict[str, Any]:
+    return make_error(stage, code, message, artifact, path)
 
-    A prior task-level six-config barrier was scientifically insufficient: it
-    could still open one task's A1 while A0 annotation for another task in the
-    same ontology/holdout block remained unfinished.  This entry point parses
-    and formally validates the block-barrier schema, then deliberately returns
-    NOT_READY until the block location manifest, all raw A0 labels, A0-only
-    adjudications, and permanent role-exposure ledger are all implemented.
-    """
 
-    stage0 = STAGE_ORDER[0]
-    barrier_path = block_dir / BLOCK_BARRIER_FILE
-    if not barrier_path.is_file():
-        return verdict(
-            False,
-            [
-                make_error(
-                    stage0,
-                    "BLOCK_BARRIER_FILE_MISSING",
-                    "full-block validation requires block_barrier.json",
-                    BLOCK_BARRIER_FILE,
-                )
-            ],
-            [],
+def _load_block_json_reference(
+    block_dir: Path,
+    relative_path: str,
+    kind: str,
+    referenced: Dict[str, Dict[str, Any]],
+    errors: List[Dict[str, Any]],
+    ndjson: bool = False,
+) -> None:
+    stage = STAGE_ORDER[0]
+    if relative_path in referenced.setdefault(kind, {}):
+        return
+    path = ensure_within_bundle(block_dir, relative_path)
+    if path is None or not path.is_file():
+        errors.append(
+            _block_error(
+                stage,
+                "REFERENCED_ARTIFACT_MISSING",
+                "referenced artifact must be a physical file inside the block bundle",
+                relative_path,
+            )
         )
+        return
     try:
-        barrier = load_json_no_duplicates(barrier_path)
-        schemas = {
-            name: load_json_no_duplicates(schema_dir / filename)
-            for name, filename in SCHEMA_FILES.items()
-        }
+        value = (
+            load_ndjson_no_duplicates(path)
+            if ndjson
+            else load_json_no_duplicates(path)
+        )
     except DuplicateKeyError as exc:
-        return verdict(
-            False,
-            [
-                make_error(
-                    stage0,
+        errors.append(
+            _block_error(
+                stage,
+                "DUPLICATE_JSON_KEY",
+                str(exc),
+                relative_path,
+                "$.%s" % exc.key,
+            )
+        )
+        return
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        errors.append(
+            _block_error(stage, "INVALID_JSON", str(exc), relative_path)
+        )
+        return
+    referenced[kind][relative_path] = value
+
+
+def _string_field(value: Any, key: str) -> Optional[str]:
+    if isinstance(value, Mapping):
+        item = value.get(key)
+        if isinstance(item, str):
+            return item
+    return None
+
+
+def load_full_block(
+    block_dir: Path,
+    schema_dir: Path,
+) -> Tuple[Optional[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Load every fixed and manifest-referenced artifact before validation."""
+
+    stage = STAGE_ORDER[0]
+    errors: List[Dict[str, Any]] = []
+    schemas: Dict[str, Any] = {}
+    fixed: Dict[str, Any] = {}
+    referenced: Dict[str, Dict[str, Any]] = {}
+
+    for name, filename in SCHEMA_FILES.items():
+        path = schema_dir / filename
+        if not path.is_file():
+            errors.append(
+                _block_error(
+                    stage,
+                    "SCHEMA_FILE_MISSING",
+                    "required schema file is missing",
+                    filename,
+                )
+            )
+            continue
+        try:
+            schemas[name] = load_json_no_duplicates(path)
+        except DuplicateKeyError as exc:
+            errors.append(
+                _block_error(
+                    stage,
                     "DUPLICATE_JSON_KEY",
                     str(exc),
-                    BLOCK_BARRIER_FILE,
+                    filename,
                     "$.%s" % exc.key,
                 )
-            ],
-            [],
-        )
-    except (OSError, json.JSONDecodeError, ValueError) as exc:
-        return verdict(
-            False,
-            [make_error(stage0, "INVALID_JSON", str(exc), BLOCK_BARRIER_FILE)],
-            [],
-        )
+            )
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            errors.append(_block_error(stage, "INVALID_JSON", str(exc), filename))
 
-    completed = [stage0]
-    if JSONSCHEMA_IMPORT_ERROR is not None:
-        return verdict(
-            False,
-            [
-                make_error(
-                    STAGE_ORDER[1],
-                    "DEPENDENCY_JSONSCHEMA_UNAVAILABLE",
-                    "Install requirements-stage0f.txt; no schema fallback is permitted: %s"
-                    % JSONSCHEMA_IMPORT_ERROR,
+    for name, filename in BLOCK_FIXED_FILES.items():
+        path = block_dir / filename
+        if not path.is_file():
+            errors.append(
+                _block_error(
+                    stage,
+                    "FULL_BLOCK_ARTIFACT_MISSING",
+                    "required full-block artifact is missing",
+                    filename,
                 )
-            ],
-            completed,
+            )
+            continue
+        try:
+            fixed[name] = load_json_no_duplicates(path)
+        except DuplicateKeyError as exc:
+            errors.append(
+                _block_error(
+                    stage,
+                    "DUPLICATE_JSON_KEY",
+                    str(exc),
+                    filename,
+                    "$.%s" % exc.key,
+                )
+            )
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            errors.append(_block_error(stage, "INVALID_JSON", str(exc), filename))
+
+    exposure_path = block_dir / BLOCK_EXPOSURE_LOG_FILE
+    if not exposure_path.is_file():
+        errors.append(
+            _block_error(
+                stage,
+                "FULL_BLOCK_ARTIFACT_MISSING",
+                "complete block delivery/access ledger is required",
+                BLOCK_EXPOSURE_LOG_FILE,
+            )
         )
-    errors = validate_schema_meta(schemas)
+    else:
+        try:
+            fixed["block_exposure_events"] = load_ndjson_no_duplicates(
+                exposure_path
+            )
+        except DuplicateKeyError as exc:
+            errors.append(
+                _block_error(
+                    stage,
+                    "DUPLICATE_JSON_KEY",
+                    str(exc),
+                    BLOCK_EXPOSURE_LOG_FILE,
+                    "$.%s" % exc.key,
+                )
+            )
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            errors.append(
+                _block_error(
+                    stage,
+                    "INVALID_JSON",
+                    str(exc),
+                    BLOCK_EXPOSURE_LOG_FILE,
+                )
+            )
+
+    frame = fixed.get("block_frame")
+    if isinstance(frame, Mapping):
+        expected_units = frame.get("expected_units")
+        if isinstance(expected_units, list):
+            for unit in expected_units:
+                rel = _string_field(unit, "coordinator_envelope_relative_path")
+                if rel:
+                    _load_block_json_reference(
+                        block_dir,
+                        rel,
+                        "coordinator_envelope",
+                        referenced,
+                        errors,
+                    )
+
+    manifest = fixed.get("block_location_manifest")
+    if isinstance(manifest, Mapping):
+        unit_scans = manifest.get("unit_scans")
+        if isinstance(unit_scans, list):
+            for scan in unit_scans:
+                prefix_rel = _string_field(
+                    scan, "prefix_commit_log_relative_path"
+                )
+                stream_rel = _string_field(scan, "stream_ledger_relative_path")
+                if prefix_rel:
+                    _load_block_json_reference(
+                        block_dir,
+                        prefix_rel,
+                        "prefix_commit",
+                        referenced,
+                        errors,
+                        ndjson=True,
+                    )
+                if stream_rel:
+                    _load_block_json_reference(
+                        block_dir,
+                        stream_rel,
+                        "block_stream_ledger",
+                        referenced,
+                        errors,
+                    )
+                    stream = referenced.get(
+                        "block_stream_ledger", {}
+                    ).get(stream_rel)
+                    raw_rel = _string_field(
+                        stream, "raw_trajectory_relative_path"
+                    )
+                    if raw_rel:
+                        _load_block_json_reference(
+                            block_dir,
+                            raw_rel,
+                            "block_raw_trajectory",
+                            referenced,
+                            errors,
+                        )
+        locations = manifest.get("locations")
+        if isinstance(locations, list):
+            for location in locations:
+                for field, kind in (
+                    ("a0_input_relative_path", "a0_input"),
+                    (
+                        "a0_submissions_relative_path",
+                        "block_a0_submissions",
+                    ),
+                    (
+                        "a0_adjudication_container_relative_path",
+                        "block_a0_adjudication",
+                    ),
+                ):
+                    rel = _string_field(location, field)
+                    if rel:
+                        _load_block_json_reference(
+                            block_dir, rel, kind, referenced, errors
+                        )
+
+    for container in list(
+        referenced.get("block_a0_adjudication", {}).values()
+    ):
+        events = container.get("events") if isinstance(container, Mapping) else None
+        if isinstance(events, list):
+            for event in events:
+                rel = _string_field(event, "a0_label_relative_path")
+                if rel:
+                    _load_block_json_reference(
+                        block_dir, rel, "a0_label", referenced, errors
+                    )
+                resolution = (
+                    event.get("source_resolution")
+                    if isinstance(event, Mapping)
+                    else None
+                )
+                search_refs = (
+                    resolution.get("search_result_refs")
+                    if isinstance(resolution, Mapping)
+                    else None
+                )
+                if isinstance(search_refs, list):
+                    for search_ref in search_refs:
+                        search_rel = _string_field(
+                            search_ref, "relative_path"
+                        )
+                        if search_rel:
+                            _load_block_json_reference(
+                                block_dir,
+                                search_rel,
+                                "source_search_result",
+                                referenced,
+                                errors,
+                            )
+
+    a1_barrier = fixed.get("block_a1_barrier")
+    if isinstance(a1_barrier, Mapping):
+        event_freezes = a1_barrier.get("event_freezes")
+        if isinstance(event_freezes, list):
+            for event in event_freezes:
+                for field, kind in (
+                    ("a1_reveal_relative_path", "a1_reveal"),
+                    ("a1_label_relative_path", "a1_label"),
+                    (
+                        "omission_interval_relative_path",
+                        "omission_interval",
+                    ),
+                ):
+                    rel = _string_field(event, field)
+                    if rel:
+                        _load_block_json_reference(
+                            block_dir, rel, kind, referenced, errors
+                        )
+
     if errors:
-        return verdict(False, errors, completed)
-    completed.append(STAGE_ORDER[1])
-    assert Draft202012Validator is not None
-    assert FormatChecker is not None
-    validator = Draft202012Validator(
-        schemas["block_barrier"],
-        registry=make_registry(schemas),
-        format_checker=FormatChecker(),
-    )
-    errors = [
-        make_error(
-            STAGE_ORDER[2],
-            "SCHEMA_INSTANCE_INVALID",
-            error.message,
-            BLOCK_BARRIER_FILE,
-            json_path(error.absolute_path),
+        return None, errors
+    return {
+        "schemas": schemas,
+        "fixed": fixed,
+        "referenced": referenced,
+        "block_dir": block_dir,
+    }, []
+
+
+def validate_full_block_instances(
+    loaded: Mapping[str, Any],
+) -> List[Dict[str, Any]]:
+    stage = STAGE_ORDER[2]
+    schemas = loaded["schemas"]
+    fixed = loaded["fixed"]
+    referenced = loaded["referenced"]
+    registry = make_registry(schemas)
+    errors: List[Dict[str, Any]] = []
+
+    def validate_one(
+        value: Any,
+        schema_name: str,
+        artifact_name: str,
+        prefix: str = "$",
+    ) -> None:
+        validator = Draft202012Validator(
+            schemas[schema_name],
+            registry=registry,
+            format_checker=FormatChecker(),
         )
         for error in sorted(
-            validator.iter_errors(barrier),
+            validator.iter_errors(value),
             key=lambda item: list(item.absolute_path),
+        ):
+            suffix = json_path(error.absolute_path)
+            errors.append(
+                _block_error(
+                    stage,
+                    "SCHEMA_INSTANCE_INVALID",
+                    error.message,
+                    artifact_name,
+                    prefix + suffix[1:],
+                )
+            )
+
+    for name, filename in BLOCK_FIXED_FILES.items():
+        validate_one(fixed[name], name, filename)
+    for index, event in enumerate(fixed["block_exposure_events"]):
+        validate_one(
+            event,
+            "block_exposure_event",
+            BLOCK_EXPOSURE_LOG_FILE,
+            "$[%d]" % index,
         )
+    for kind, by_path in referenced.items():
+        schema_name = kind
+        for relative_path, value in by_path.items():
+            if kind == "prefix_commit":
+                for index, entry in enumerate(value):
+                    validate_one(
+                        entry,
+                        "prefix_commit",
+                        relative_path,
+                        "$[%d]" % index,
+                    )
+            else:
+                validate_one(value, schema_name, relative_path)
+    return errors
+
+
+def _referenced_value(
+    loaded: Mapping[str, Any],
+    kind: str,
+    relative_path: str,
+) -> Any:
+    return loaded["referenced"][kind][relative_path]
+
+
+def _artifact_ref_error(
+    actual_ref: Mapping[str, Any],
+    artifact: Mapping[str, Any],
+    artifact_name: str,
+    path: str,
+) -> Optional[Dict[str, Any]]:
+    if actual_ref != artifact_ref(artifact):
+        return _block_error(
+            STAGE_ORDER[4],
+            "HASH_BLOCK_ARTIFACT_REF_MISMATCH",
+            "reference does not bind the physical artifact id and canonical bytes",
+            artifact_name,
+            path,
+        )
+    return None
+
+
+def _raw_file_hash_error(
+    block_dir: Path,
+    relative_path: str,
+    expected_sha256: str,
+    artifact_name: str,
+    path: str,
+) -> Optional[Dict[str, Any]]:
+    resolved = ensure_within_bundle(block_dir, relative_path)
+    if resolved is None or not resolved.is_file():
+        return _block_error(
+            STAGE_ORDER[4],
+            "HASH_BLOCK_RAW_PATH_INVALID",
+            "raw bytes must be a physical file inside the block bundle",
+            artifact_name,
+            path,
+        )
+    actual = hashlib.sha256(resolved.read_bytes()).hexdigest()
+    if actual != expected_sha256:
+        return _block_error(
+            STAGE_ORDER[4],
+            "HASH_BLOCK_RAW_BYTES_MISMATCH",
+            "raw bytes do not match their frozen SHA-256",
+            artifact_name,
+            path,
+        )
+    return None
+
+
+def _parse_registered_raw_source(
+    source_path: Path,
+    parser: Mapping[str, Any],
+    block_scope: str,
+    artifact_name: str,
+) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    """Execute the only currently registered source parser.
+
+    The registered grammar is deliberately synthetic-only.  A real ontology
+    Block-A packet therefore fails closed until an adapter that parses the
+    immutable published source bytes is added to this executable and schema.
+    """
+
+    stage = STAGE_ORDER[4]
+    if parser["parser_id"] != RAW_TRAJECTORY_PARSER_ID:
+        return None, _block_error(
+            stage,
+            "HASH_RAW_SOURCE_PARSER_UNREGISTERED",
+            "raw source parser id is not registered in this validator",
+            artifact_name,
+            "$.raw_parser.parser_id",
+        )
+    if block_scope != "synthetic_test_only":
+        return None, _block_error(
+            stage,
+            "HASH_PRODUCTION_SOURCE_PARSER_UNAVAILABLE",
+            "the only registered raw-source parser is synthetic-only; production fails closed",
+            artifact_name,
+            "$.raw_parser.parser_id",
+        )
+    try:
+        source = json.loads(
+            source_path.read_text(encoding="utf-8"),
+            object_pairs_hook=_reject_duplicate_pairs,
+        )
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, DuplicateKeyError) as exc:
+        return None, _block_error(
+            stage,
+            "HASH_RAW_SOURCE_PARSE_FAILED",
+            "registered raw-source parser rejected source bytes: %s" % exc,
+            artifact_name,
+            "$.raw_parser",
+        )
+    required = {
+        "source_format",
+        "synthetic_test_only",
+        "research_evidence",
+        "unit_alias",
+        "trajectory_id",
+        "trajectory_mode",
+        "entries",
+        "published_at",
+    }
+    if (
+        not isinstance(source, Mapping)
+        or set(source) != required
+        or source.get("source_format")
+        != SYNTHETIC_PUBLISHED_TRAJECTORY_FORMAT
+        or source.get("synthetic_test_only") is not True
+        or source.get("research_evidence") is not False
+        or not isinstance(source.get("unit_alias"), str)
+        or not isinstance(source.get("trajectory_id"), str)
+        or source.get("trajectory_mode")
+        not in {"standard_steps", "batch_tool_model_steps"}
+        or not isinstance(source.get("entries"), list)
+        or not source["entries"]
+        or not isinstance(source.get("published_at"), str)
+    ):
+        return None, _block_error(
+            stage,
+            "HASH_RAW_SOURCE_PARSE_FAILED",
+            "source bytes do not match the exact registered synthetic grammar",
+            artifact_name,
+            "$.raw_parser",
+        )
+    try:
+        parse_timestamp(source["published_at"])
+        canonical_bytes(source)
+    except (TypeError, ValueError) as exc:
+        return None, _block_error(
+            stage,
+            "HASH_RAW_SOURCE_PARSE_FAILED",
+            "source bytes violate the registered canonical grammar: %s" % exc,
+            artifact_name,
+            "$.raw_parser",
+        )
+    return {
+        "raw_format": RAW_TRAJECTORY_FORMAT,
+        "unit_alias": source["unit_alias"],
+        "trajectory_id": source["trajectory_id"],
+        "trajectory_mode": source["trajectory_mode"],
+        "entries": source["entries"],
+    }, None
+
+
+def first_full_block_hash_error(
+    loaded: Mapping[str, Any],
+    expected_frame_sha256: str,
+) -> Optional[Dict[str, Any]]:
+    stage = STAGE_ORDER[4]
+    fixed = loaded["fixed"]
+    block_dir = loaded["block_dir"]
+    frame = fixed["block_frame"]
+    manifest = fixed["block_location_manifest"]
+    a0_barrier = fixed["block_barrier"]
+    a1_barrier = fixed["block_a1_barrier"]
+    stage_b_gate = fixed["stage_b_gate"]
+    role_history = fixed["role_history"]
+
+    actual_frame_hash = canonical_sha256(frame)
+    if actual_frame_hash != expected_frame_sha256:
+        return _block_error(
+            stage,
+            "HASH_EXTERNAL_FRAME_COMMITMENT_MISMATCH",
+            "block frame bytes do not match the external frozen frame commitment",
+            BLOCK_FRAME_FILE,
+        )
+    for actual_ref, artifact, filename, path in (
+        (
+            manifest["block_frame_ref"],
+            frame,
+            BLOCK_LOCATION_MANIFEST_FILE,
+            "$.block_frame_ref",
+        ),
+        (
+            a0_barrier["block_frame_ref"],
+            frame,
+            BLOCK_BARRIER_FILE,
+            "$.block_frame_ref",
+        ),
+        (
+            a0_barrier["location_manifest_ref"],
+            manifest,
+            BLOCK_BARRIER_FILE,
+            "$.location_manifest_ref",
+        ),
+        (
+            a1_barrier["block_a0_barrier_ref"],
+            a0_barrier,
+            BLOCK_A1_BARRIER_FILE,
+            "$.block_a0_barrier_ref",
+        ),
+        (
+            a1_barrier["location_manifest_ref"],
+            manifest,
+            BLOCK_A1_BARRIER_FILE,
+            "$.location_manifest_ref",
+        ),
+        (
+            stage_b_gate["block_a1_barrier_ref"],
+            a1_barrier,
+            STAGE_B_GATE_FILE,
+            "$.block_a1_barrier_ref",
+        ),
+        (
+            a0_barrier["role_history_ref"],
+            role_history,
+            BLOCK_BARRIER_FILE,
+            "$.role_history_ref",
+        ),
+    ):
+        error = _artifact_ref_error(actual_ref, artifact, filename, path)
+        if error:
+            return error
+
+    frame_units = {
+        item["unit_alias"]: item for item in frame["expected_units"]
+    }
+    coordinators: Dict[str, Mapping[str, Any]] = {}
+    coordinator_source_paths: Dict[str, Path] = {}
+    for unit_alias, entry in frame_units.items():
+        relative_path = entry["coordinator_envelope_relative_path"]
+        coordinator = _referenced_value(
+            loaded, "coordinator_envelope", relative_path
+        )
+        coordinators[unit_alias] = coordinator
+        error = _artifact_ref_error(
+            entry["coordinator_envelope_ref"],
+            coordinator,
+            BLOCK_FRAME_FILE,
+            "$.expected_units.%s.coordinator_envelope_ref" % unit_alias,
+        )
+        if error:
+            return error
+        coordinator_path = ensure_within_bundle(block_dir, relative_path)
+        if coordinator_path is None:
+            return _block_error(
+                stage,
+                "HASH_BLOCK_COORDINATOR_PATH_INVALID",
+                "coordinator envelope must be a physical file inside the block",
+                relative_path,
+            )
+        source_snapshot = coordinator["source_snapshot"]
+        source_path = ensure_within_bundle(
+            coordinator_path.parent,
+            source_snapshot["raw_response_relative_path"],
+        )
+        if source_path is None or not source_path.is_file():
+            return _block_error(
+                stage,
+                "HASH_BLOCK_SOURCE_PATH_INVALID",
+                "coordinator raw response must be a physical file inside its unit directory",
+                relative_path,
+                "$.source_snapshot.raw_response_relative_path",
+            )
+        if (
+            hashlib.sha256(source_path.read_bytes()).hexdigest()
+            != source_snapshot["raw_response_sha256"]
+        ):
+            return _block_error(
+                stage,
+                "HASH_BLOCK_SOURCE_BYTES_MISMATCH",
+                "coordinator raw-response bytes do not match their frozen SHA-256",
+                relative_path,
+                "$.source_snapshot.raw_response_sha256",
+            )
+        coordinator_source_paths[unit_alias] = source_path
+        asset_ids: Set[str] = set()
+        asset_paths: Set[str] = set()
+        for asset_index, asset in enumerate(coordinator["asset_manifest"]):
+            if (
+                asset["asset_id"] in asset_ids
+                or asset["relative_path"] in asset_paths
+            ):
+                return _block_error(
+                    stage,
+                    "HASH_BLOCK_ASSET_DUPLICATE",
+                    "coordinator asset ids and paths must be unique",
+                    relative_path,
+                    "$.asset_manifest[%d]" % asset_index,
+                )
+            asset_ids.add(asset["asset_id"])
+            asset_paths.add(asset["relative_path"])
+            asset_path = ensure_within_bundle(
+                coordinator_path.parent, asset["relative_path"]
+            )
+            if asset_path is None or not asset_path.is_file():
+                return _block_error(
+                    stage,
+                    "HASH_BLOCK_ASSET_PATH_INVALID",
+                    "coordinator asset must be a physical file inside its unit directory",
+                    relative_path,
+                    "$.asset_manifest[%d].relative_path" % asset_index,
+                )
+            if (
+                hashlib.sha256(asset_path.read_bytes()).hexdigest()
+                != asset["sha256"]
+            ):
+                return _block_error(
+                    stage,
+                    "HASH_BLOCK_ASSET_BYTES_MISMATCH",
+                    "coordinator asset bytes do not match their frozen SHA-256",
+                    relative_path,
+                    "$.asset_manifest[%d].sha256" % asset_index,
+                )
+
+    schema_hash = schema_bundle_sha256(loaded["schemas"])
+    scans = {
+        item["unit_alias"]: item for item in manifest["unit_scans"]
+    }
+    prefix_by_unit: Dict[str, Sequence[Mapping[str, Any]]] = {}
+    stream_by_unit: Dict[str, Mapping[str, Any]] = {}
+    for unit_alias, scan in scans.items():
+        prefix_entries = _referenced_value(
+            loaded, "prefix_commit", scan["prefix_commit_log_relative_path"]
+        )
+        prefix_by_unit[unit_alias] = prefix_entries
+        if canonical_sha256(prefix_entries) != scan["prefix_commit_log_sha256"]:
+            return _block_error(
+                stage,
+                "HASH_PREFIX_LOG_MISMATCH",
+                "prefix commit log canonical bytes do not match the manifest",
+                BLOCK_LOCATION_MANIFEST_FILE,
+                "$.unit_scans.%s.prefix_commit_log_sha256" % unit_alias,
+            )
+        stream = _referenced_value(
+            loaded, "block_stream_ledger", scan["stream_ledger_relative_path"]
+        )
+        stream_by_unit[unit_alias] = stream
+        error = _artifact_ref_error(
+            scan["stream_ledger_ref"],
+            stream,
+            BLOCK_LOCATION_MANIFEST_FILE,
+            "$.unit_scans.%s.stream_ledger_ref" % unit_alias,
+        )
+        if error:
+            return error
+        raw_trajectory = _referenced_value(
+            loaded,
+            "block_raw_trajectory",
+            stream["raw_trajectory_relative_path"],
+        )
+        error = _artifact_ref_error(
+            stream["raw_trajectory_ref"],
+            raw_trajectory,
+            scan["stream_ledger_relative_path"],
+            "$.raw_trajectory_ref",
+        )
+        if error:
+            return error
+        parser = stream["raw_parser"]
+        if (
+            parser["parser_id"] != RAW_TRAJECTORY_PARSER_ID
+            or parser["input_format"] != RAW_TRAJECTORY_FORMAT
+            or parser["projection_name"] != RAW_TRAJECTORY_PROJECTION
+            or parser["executable_sha256"] != validator_file_sha256()
+        ):
+            return _block_error(
+                stage,
+                "HASH_RAW_PARSER_IDENTITY_MISMATCH",
+                "raw projection requires this exact frozen parser executable",
+                scan["stream_ledger_relative_path"],
+                "$.raw_parser",
+            )
+        raw_path = ensure_within_bundle(
+            block_dir, stream["raw_trajectory_relative_path"]
+        )
+        if raw_path is None or not raw_path.is_file():
+            return _block_error(
+                stage,
+                "HASH_RAW_TRAJECTORY_PATH_INVALID",
+                "normalized raw trajectory must be a physical file inside the block",
+                scan["stream_ledger_relative_path"],
+                "$.raw_trajectory_relative_path",
+            )
+        if raw_path == coordinator_source_paths[unit_alias]:
+            return _block_error(
+                stage,
+                "HASH_RAW_TRAJECTORY_NOT_DERIVED",
+                "normalized trajectory must be a separate parser output, not an alias of source bytes",
+                scan["stream_ledger_relative_path"],
+                "$.raw_trajectory_relative_path",
+            )
+        parsed_projection, parse_error = _parse_registered_raw_source(
+            coordinator_source_paths[unit_alias],
+            parser,
+            frame["block_scope"],
+            scan["stream_ledger_relative_path"],
+        )
+        if parse_error:
+            return parse_error
+        assert parsed_projection is not None
+        physical_projection = {
+            "raw_format": raw_trajectory["raw_format"],
+            "unit_alias": raw_trajectory["unit_alias"],
+            "trajectory_id": raw_trajectory["trajectory_id"],
+            "trajectory_mode": raw_trajectory["trajectory_mode"],
+            "entries": raw_trajectory["entries"],
+        }
+        if physical_projection != parsed_projection:
+            return _block_error(
+                stage,
+                "HASH_RAW_PARSER_PROJECTION_MISMATCH",
+                "physical normalized trajectory is not the registered parser output over frozen source bytes",
+                stream["raw_trajectory_relative_path"],
+            )
+        for index, stream_entry in enumerate(stream["entries"]):
+            action = stream_entry["current_action"]
+            if action["kind"] == "current_action":
+                error = _raw_file_hash_error(
+                    block_dir,
+                    action["action_bytes_relative_path"],
+                    action["action_bytes_sha256"],
+                    scan["stream_ledger_relative_path"],
+                    "$.entries[%d].current_action.action_bytes_sha256"
+                    % index,
+                )
+                if error:
+                    return error
+
+    location_objects: Dict[
+        Tuple[str, str],
+        Tuple[
+            Mapping[str, Any],
+            Mapping[str, Any],
+            Mapping[str, Any],
+        ],
+    ] = {}
+    for location in manifest["locations"]:
+        unit_alias = location["unit_alias"]
+        boundary_id = location["boundary_location_id"]
+        a0_input = _referenced_value(
+            loaded, "a0_input", location["a0_input_relative_path"]
+        )
+        submissions = _referenced_value(
+            loaded,
+            "block_a0_submissions",
+            location["a0_submissions_relative_path"],
+        )
+        adjudication = _referenced_value(
+            loaded,
+            "block_a0_adjudication",
+            location["a0_adjudication_container_relative_path"],
+        )
+        location_objects[(unit_alias, boundary_id)] = (
+            a0_input,
+            submissions,
+            adjudication,
+        )
+        for actual_ref, artifact, field in (
+            (location["a0_input_ref"], a0_input, "a0_input_ref"),
+            (
+                location["a0_submissions_ref"],
+                submissions,
+                "a0_submissions_ref",
+            ),
+            (
+                location["a0_adjudication_container_ref"],
+                adjudication,
+                "a0_adjudication_container_ref",
+            ),
+        ):
+            error = _artifact_ref_error(
+                actual_ref,
+                artifact,
+                BLOCK_LOCATION_MANIFEST_FILE,
+                "$.locations.%s.%s.%s"
+                % (unit_alias, boundary_id, field),
+            )
+            if error:
+                return error
+        if submissions["schema_bundle_sha256"] != schema_hash:
+            return _block_error(
+                stage,
+                "HASH_A0_SUBMISSION_SCHEMA_BUNDLE",
+                "A0 submission container does not bind the loaded schema bundle",
+                location["a0_submissions_relative_path"],
+                "$.schema_bundle_sha256",
+            )
+        raw_ids: Set[str] = set()
+        for submission in submissions["submissions"]:
+            for raw_label in submission["raw_labels"]:
+                expected_id = block_a0_raw_label_id(
+                    unit_alias,
+                    boundary_id,
+                    submissions["schema_bundle_sha256"],
+                    submissions["codebook_sha256"],
+                    submission["annotator_alias"],
+                    raw_label["semantic_payload"],
+                )
+                if raw_label["a0_raw_label_id"] != expected_id:
+                    return _block_error(
+                        stage,
+                        "HASH_A0_RAW_LABEL_ID",
+                        "raw A0 id does not match its complete frozen preimage",
+                        location["a0_submissions_relative_path"],
+                        "$.submissions.%s.raw_labels"
+                        % submission["annotator_alias"],
+                    )
+                if expected_id in raw_ids:
+                    return _block_error(
+                        stage,
+                        "HASH_A0_RAW_LABEL_DUPLICATE",
+                        "duplicate raw A0 identity is prohibited",
+                        location["a0_submissions_relative_path"],
+                    )
+                raw_ids.add(expected_id)
+        error = _artifact_ref_error(
+            adjudication["a0_input_ref"],
+            a0_input,
+            location["a0_adjudication_container_relative_path"],
+            "$.a0_input_ref",
+        )
+        if error:
+            return error
+        error = _artifact_ref_error(
+            adjudication["a0_submissions_ref"],
+            submissions,
+            location["a0_adjudication_container_relative_path"],
+            "$.a0_submissions_ref",
+        )
+        if error:
+            return error
+        for event in adjudication["events"]:
+            label = _referenced_value(
+                loaded, "a0_label", event["a0_label_relative_path"]
+            )
+            error = _artifact_ref_error(
+                event["a0_label_ref"],
+                label,
+                location["a0_adjudication_container_relative_path"],
+                "$.events.%s.a0_label_ref"
+                % event["adjudicated_event_id"],
+            )
+            if error:
+                return error
+            resolution = event["source_resolution"]
+            if resolution["status"] == "source_unidentifiable":
+                for search_index, search_ref in enumerate(
+                    resolution["search_result_refs"]
+                ):
+                    search_result = _referenced_value(
+                        loaded,
+                        "source_search_result",
+                        search_ref["relative_path"],
+                    )
+                    error = _artifact_ref_error(
+                        search_ref["artifact_ref"],
+                        search_result,
+                        location[
+                            "a0_adjudication_container_relative_path"
+                        ],
+                        "$.events.%s.source_resolution.search_result_refs[%d]"
+                        % (event["adjudicated_event_id"], search_index),
+                    )
+                    if error:
+                        return error
+            if adjudicated_event_id(
+                label["adjudicated_event_preimage"]
+            ) != label["adjudicated_event_id"]:
+                return _block_error(
+                    stage,
+                    "HASH_A0_EVENT_PREIMAGE_MISMATCH",
+                    "adjudicated event id does not match its frozen preimage",
+                    event["a0_label_relative_path"],
+                    "$.adjudicated_event_id",
+                )
+
+    a0_barrier_hash = canonical_sha256(a0_barrier)
+    for freeze in a1_barrier["event_freezes"]:
+        reveal = _referenced_value(
+            loaded, "a1_reveal", freeze["a1_reveal_relative_path"]
+        )
+        label = _referenced_value(
+            loaded, "a1_label", freeze["a1_label_relative_path"]
+        )
+        for actual_ref, artifact, field in (
+            (freeze["a1_reveal_ref"], reveal, "a1_reveal_ref"),
+            (freeze["a1_label_ref"], label, "a1_label_ref"),
+        ):
+            error = _artifact_ref_error(
+                actual_ref,
+                artifact,
+                BLOCK_A1_BARRIER_FILE,
+                "$.event_freezes.%s.%s"
+                % (freeze["adjudicated_event_id"], field),
+            )
+            if error:
+                return error
+        if reveal["block_barrier_commitment_sha256"] != a0_barrier_hash:
+            return _block_error(
+                stage,
+                "HASH_A1_A0_BARRIER_LINK",
+                "every A1 reveal must bind the complete A0 block barrier",
+                freeze["a1_reveal_relative_path"],
+                "$.block_barrier_commitment_sha256",
+            )
+        if "omission_interval_relative_path" in freeze:
+            omission = _referenced_value(
+                loaded,
+                "omission_interval",
+                freeze["omission_interval_relative_path"],
+            )
+            error = _artifact_ref_error(
+                freeze["omission_interval_ref"],
+                omission,
+                BLOCK_A1_BARRIER_FILE,
+                "$.event_freezes.%s.omission_interval_ref"
+                % freeze["adjudicated_event_id"],
+            )
+            if error:
+                return error
+
+    events = fixed["block_exposure_events"]
+    previous = None
+    for index, event in enumerate(events):
+        if event["previous_entry_sha256"] != previous:
+            return _block_error(
+                stage,
+                "HASH_BLOCK_EXPOSURE_CHAIN_LINK",
+                "exposure ledger previous hash does not match",
+                BLOCK_EXPOSURE_LOG_FILE,
+                "$[%d].previous_entry_sha256" % index,
+            )
+        expected = block_exposure_entry_sha256(event)
+        if event["entry_sha256"] != expected:
+            return _block_error(
+                stage,
+                "HASH_BLOCK_EXPOSURE_ENTRY",
+                "exposure ledger entry hash does not match canonical bytes",
+                BLOCK_EXPOSURE_LOG_FILE,
+                "$[%d].entry_sha256" % index,
+            )
+        previous = expected
+    if previous != stage_b_gate["exposure_chain_tip_sha256"]:
+        return _block_error(
+            stage,
+            "HASH_BLOCK_EXPOSURE_CHAIN_TIP",
+            "Stage-B gate does not bind the complete exposure ledger tip",
+            STAGE_B_GATE_FILE,
+            "$.exposure_chain_tip_sha256",
+        )
+    return None
+
+
+def _source_category_or_error(
+    loaded: Mapping[str, Any],
+    a0_input: Mapping[str, Any],
+    a0_label: Mapping[str, Any],
+    container_event: Mapping[str, Any],
+    artifact_name: str,
+) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
+    stage = STAGE_ORDER[3]
+    evidence = a0_label["update_source_evidence"]
+    labels = [item["label"] for item in evidence]
+    label_set = set(labels)
+    resolution = container_event["source_resolution"]
+    if not labels:
+        return None, _block_error(
+            stage,
+            "INVALID_SOURCE_MEASUREMENT",
+            "source label set cannot be empty",
+            artifact_name,
+            "$.update_source_evidence",
+        )
+    if len(labels) != len(label_set):
+        return None, _block_error(
+            stage,
+            "INVALID_SOURCE_MEASUREMENT",
+            "source labels must be unique",
+            artifact_name,
+            "$.update_source_evidence",
+        )
+    unknown = "source_unidentifiable" in label_set
+    if unknown:
+        if label_set != {"source_unidentifiable"}:
+            return None, _block_error(
+                stage,
+                "INVALID_SOURCE_MEASUREMENT",
+                "source_unidentifiable is mutually exclusive with factual labels",
+                artifact_name,
+                "$.update_source_evidence",
+            )
+        if resolution["status"] != "source_unidentifiable":
+            return None, _block_error(
+                stage,
+                "INVALID_SOURCE_MEASUREMENT",
+                "SOURCE_UNKNOWN requires the exclusive frozen search branch",
+                artifact_name,
+                "$.source_resolution",
+            )
+        roster = resolution["searched_scope_roster"]
+        if canonical_sha256(roster) != resolution["searched_scope_sha256"]:
+            return None, _block_error(
+                stage,
+                "INVALID_SOURCE_MEASUREMENT",
+                "searched-scope roster hash mismatch",
+                artifact_name,
+                "$.source_resolution.searched_scope_sha256",
+            )
+        search_results = [
+            _referenced_value(
+                loaded,
+                "source_search_result",
+                item["relative_path"],
+            )
+            for item in resolution["search_result_refs"]
+        ]
+        searched_items = [
+            item["searched_scope_item"] for item in search_results
+        ]
+        expected_status = {
+            "NO_CUTOFF_SOURCE_AFTER_FROZEN_SEARCH": "no_source_found",
+            "CONFLICTING_CUTOFF_SOURCES_AFTER_FROZEN_SEARCH": "conflicting_sources",
+            "SOURCE_BYTES_UNAVAILABLE_AFTER_FROZEN_SEARCH": "source_bytes_unavailable",
+        }[resolution["reason_code"]]
+        if (
+            searched_items != roster
+            or any(
+                result["unit_alias"] != a0_input["unit_alias"]
+                or result["boundary_location_id"]
+                != a0_input["boundary_location_id"]
+                or artifact_ref(a0_input)
+                not in result["checked_artifact_refs"]
+                or result["result_status"] != expected_status
+                or parse_timestamp(result["frozen_at"])
+                > parse_timestamp(a0_label["frozen_at"])
+                for result in search_results
+            )
+        ):
+            return None, _block_error(
+                stage,
+                "INVALID_SOURCE_MEASUREMENT",
+                "unknown-source search refs must physically cover the exact frozen scope with event-local audit records",
+                artifact_name,
+                "$.source_resolution.search_result_refs",
+            )
+        return "SOURCE_UNKNOWN", None
+    if resolution["status"] != "identified":
+        return None, _block_error(
+            stage,
+            "INVALID_SOURCE_MEASUREMENT",
+            "factual labels require the identified-source branch",
+            artifact_name,
+            "$.source_resolution",
+        )
+    observations = {
+        item["observation_ordinal"]: item
+        for item in a0_input["prefix_observations"]
+    }
+    cutoff = a0_input["cutoff_observation_ordinal"]
+    for index, item in enumerate(evidence):
+        pointer = item["evidence_pointer"]
+        ordinal = pointer["observation_ordinal"]
+        if (
+            pointer["artifact_id"] != a0_input["artifact_id"]
+            or pointer["source_kind"] != "observation"
+            or ordinal > cutoff
+            or ordinal not in observations
+            or pointer["content_sha256"]
+            != canonical_sha256(observations[ordinal])
+        ):
+            return None, _block_error(
+                stage,
+                "INVALID_SOURCE_MEASUREMENT",
+                "every factual source label needs a direct cutoff-or-earlier observation pointer",
+                artifact_name,
+                "$.update_source_evidence[%d].evidence_pointer" % index,
+            )
+    if "world_truth_changed" in label_set:
+        if label_set == {"world_truth_changed"}:
+            return "PURE_WORLD", None
+        return "MIXED_WORLD", None
+    return "NON_WORLD", None
+
+
+def _first_stream_semantic_error(
+    loaded: Mapping[str, Any],
+    unit_alias: str,
+    scan: Mapping[str, Any],
+    coordinator: Mapping[str, Any],
+    generator_aliases: Set[str],
+) -> Optional[Dict[str, Any]]:
+    stage = STAGE_ORDER[3]
+    prefix_entries = _referenced_value(
+        loaded, "prefix_commit", scan["prefix_commit_log_relative_path"]
+    )
+    stream = _referenced_value(
+        loaded, "block_stream_ledger", scan["stream_ledger_relative_path"]
+    )
+    raw_trajectory = _referenced_value(
+        loaded,
+        "block_raw_trajectory",
+        stream["raw_trajectory_relative_path"],
+    )
+    if stream["unit_alias"] != unit_alias:
+        return _block_error(
+            stage,
+            "SEM_STREAM_UNIT_LINK",
+            "stream ledger unit alias does not match its scan",
+            scan["stream_ledger_relative_path"],
+            "$.unit_alias",
+        )
+    trajectory_mode = coordinator["identity"]["trajectory_mode"]
+    if (
+        stream["trajectory_mode"] != trajectory_mode
+        or raw_trajectory["unit_alias"] != unit_alias
+        or raw_trajectory["trajectory_id"]
+        != coordinator["identity"]["trajectory_id"]
+        or raw_trajectory["trajectory_mode"] != trajectory_mode
+        or raw_trajectory["raw_format"] != RAW_TRAJECTORY_FORMAT
+    ):
+        return _block_error(
+            stage,
+            "SEM_STREAM_TRAJECTORY_MODE",
+            "raw trajectory and stream identity must match the coordinator envelope",
+            scan["stream_ledger_relative_path"],
+            "$.trajectory_mode",
+        )
+    raw_entries = raw_trajectory["entries"]
+    raw_ordinals = [
+        item["observation"]["observation_ordinal"] for item in raw_entries
     ]
+    asset_by_id = {
+        item["asset_id"]: item for item in coordinator["asset_manifest"]
+    }
+    for raw_entry in raw_entries:
+        observation = raw_entry["observation"]
+        ordinal = observation["observation_ordinal"]
+        assets = observation["assets"]
+        if (
+            observation["missingness"] == "none"
+            and not assets
+        ) or (
+            observation["missingness"] != "none"
+            and assets
+        ):
+            return _block_error(
+                stage,
+                "SEM_RAW_OBSERVATION_ASSET_LINK",
+                "raw observation missingness and physical asset refs are inconsistent",
+                stream["raw_trajectory_relative_path"],
+                "$.entries[%d].observation.assets" % ordinal,
+            )
+        if any(
+            ref["asset_id"] not in asset_by_id
+            or asset_by_id[ref["asset_id"]]["observation_ordinal"]
+            != ordinal
+            or asset_by_id[ref["asset_id"]]["sha256"]
+            != ref["sha256"]
+            for ref in assets
+        ):
+            return _block_error(
+                stage,
+                "SEM_RAW_OBSERVATION_ASSET_LINK",
+                "every parsed raw observation asset must bind the coordinator-frozen physical asset for that ordinal",
+                stream["raw_trajectory_relative_path"],
+                "$.entries[%d].observation.assets" % ordinal,
+            )
+    expected_ordinals = list(range(len(raw_entries)))
+    if (
+        raw_ordinals != expected_ordinals
+        or scan["observation_count"] != len(raw_entries)
+        or scan["ordinal_roster"] != expected_ordinals
+    ):
+        return _block_error(
+            stage,
+            "SEM_EXACT_ORDINAL_ROSTER",
+            "manifest roster must be rederived from the complete zero-based parsed raw trajectory",
+            BLOCK_LOCATION_MANIFEST_FILE,
+            "$.unit_scans.%s.ordinal_roster" % unit_alias,
+        )
+    if len(prefix_entries) != len(expected_ordinals) or len(
+        stream["entries"]
+    ) != len(expected_ordinals):
+        return _block_error(
+            stage,
+            "SEM_EXACT_ORDINAL_ROSTER",
+            "prefix and stream ledgers must cover every frozen ordinal exactly once",
+            BLOCK_LOCATION_MANIFEST_FILE,
+            "$.unit_scans.%s" % unit_alias,
+        )
+    previous = None
+    boundary_ids: List[str] = []
+    for ordinal, (raw_entry, prefix, stream_entry) in enumerate(
+        zip(raw_entries, prefix_entries, stream["entries"])
+    ):
+        raw_observation = raw_entry["observation"]
+        if (
+            prefix["sequence"] != ordinal
+            or prefix["observation_ordinal"] != ordinal
+            or stream_entry["observation_ordinal"] != ordinal
+            or prefix["unit_alias"] != unit_alias
+        ):
+            return _block_error(
+                stage,
+                "SEM_EXACT_ORDINAL_ROSTER",
+                "stream and prefix entries cannot be missing, duplicated, or renumbered",
+                scan["prefix_commit_log_relative_path"],
+                "$[%d]" % ordinal,
+            )
+        if prefix["previous_entry_sha256"] != previous:
+            return _block_error(
+                stage,
+                "SEM_PREFIX_CHAIN_LINK",
+                "prefix chain previous hash mismatch",
+                scan["prefix_commit_log_relative_path"],
+                "$[%d].previous_entry_sha256" % ordinal,
+            )
+        expected_entry_hash = chained_entry_sha256(prefix)
+        if prefix["entry_sha256"] != expected_entry_hash:
+            return _block_error(
+                stage,
+                "SEM_PREFIX_CHAIN_ENTRY",
+                "prefix chain entry hash mismatch",
+                scan["prefix_commit_log_relative_path"],
+                "$[%d].entry_sha256" % ordinal,
+            )
+        previous = expected_entry_hash
+        expected_location = boundary_location_id(
+            prefix["boundary_namespace"],
+            unit_alias,
+            ordinal,
+            prefix["a0_prefix_payload_sha256"],
+        )
+        if prefix["boundary_location_id"] != expected_location:
+            return _block_error(
+                stage,
+                "SEM_LOCATION_ID_DERIVATION",
+                "ordinal boundary id must derive from the outcome-blind prefix commitment",
+                scan["prefix_commit_log_relative_path"],
+                "$[%d].boundary_location_id" % ordinal,
+            )
+        boundary_ids.append(expected_location)
+        if (
+            stream_entry["observation_sha256"]
+            != prefix["observation_sha256"]
+            or stream_entry["prefix_commit_entry_sha256"]
+            != prefix["entry_sha256"]
+            or stream_entry["prefix_committed_at"] != prefix["committed_at"]
+            or stream_entry["observation_sha256"]
+            != canonical_sha256(raw_observation)
+            or stream_entry["observed_at"]
+            != raw_observation["observed_at"]
+        ):
+            return _block_error(
+                stage,
+                "SEM_STREAM_PREFIX_LINK",
+                "stream entry must be the parser-derived raw observation and bind its prefix commit",
+                scan["stream_ledger_relative_path"],
+                "$.entries[%d]" % ordinal,
+            )
+        observed_at = parse_timestamp(stream_entry["observed_at"])
+        committed_at = parse_timestamp(prefix["committed_at"])
+        decision_times: List[datetime] = []
+        decision_aliases: Set[str] = set()
+        for decision in prefix["generator_decisions"]:
+            alias = decision["generator_alias"]
+            if alias not in generator_aliases or alias in decision_aliases:
+                return _block_error(
+                    stage,
+                    "SEM_GENERATOR_ROLE_OR_INDEPENDENCE",
+                    "each prefix needs distinct registered candidate generators",
+                    scan["prefix_commit_log_relative_path"],
+                    "$[%d].generator_decisions" % ordinal,
+                )
+            decision_aliases.add(alias)
+            if (
+                decision["visible_through_observation_ordinal"] != ordinal
+                or decision["boundary_location_id"] != expected_location
+            ):
+                return _block_error(
+                    stage,
+                    "SEM_GENERATOR_FUTURE_OR_LOCATION_LINK",
+                    "generator decision must see exactly o_k and bind that location",
+                    scan["prefix_commit_log_relative_path"],
+                    "$[%d].generator_decisions" % ordinal,
+                )
+            decision_times.append(parse_timestamp(decision["decided_at"]))
+        if not all(
+            observed_at <= decision_time <= committed_at
+            for decision_time in decision_times
+        ):
+            return _block_error(
+                stage,
+                "SEM_OBSERVATION_COMMIT_ORDER",
+                "required order is o_k <= generator decisions <= commit",
+                scan["prefix_commit_log_relative_path"],
+                "$[%d]" % ordinal,
+            )
+        action = stream_entry["current_action"]
+        if action["kind"] == "terminal_no_action":
+            if ordinal != expected_ordinals[-1]:
+                return _block_error(
+                    stage,
+                    "SEM_STREAM_EARLY_TERMINAL",
+                    "only the last frozen ordinal may have no current action",
+                    scan["stream_ledger_relative_path"],
+                    "$.entries[%d].current_action" % ordinal,
+                )
+            if action != raw_entry["current_action"]:
+                return _block_error(
+                    stage,
+                    "SEM_RAW_STREAM_PROJECTION",
+                    "terminal action marker must equal the registered raw-parser projection",
+                    scan["stream_ledger_relative_path"],
+                    "$.entries[%d].current_action" % ordinal,
+                )
+            continue
+        if ordinal == expected_ordinals[-1]:
+            return _block_error(
+                stage,
+                "SEM_STREAM_NEXT_OBSERVATION_MISSING",
+                "a current action requires its next observation",
+                scan["stream_ledger_relative_path"],
+                "$.entries[%d].current_action" % ordinal,
+            )
+        next_entry = stream["entries"][ordinal + 1]
+        action_reveal = parse_timestamp(action["revealed_at"])
+        next_observed = parse_timestamp(action["next_observed_at"])
+        if not (
+            committed_at < action_reveal < next_observed
+            and action["next_observation_ordinal"] == ordinal + 1
+            and action["next_observation_sha256"]
+            == next_entry["observation_sha256"]
+            and action["next_observed_at"] == next_entry["observed_at"]
+        ):
+            return _block_error(
+                stage,
+                "SEM_COMMIT_BEFORE_CURRENT_ACTION",
+                "required order is commit < current a_k reveal < o_(k+1)",
+                scan["stream_ledger_relative_path"],
+                "$.entries[%d].current_action" % ordinal,
+            )
+        subactions = action["subactions"]
+        action_ordinals = [item["action_ordinal"] for item in subactions]
+        if len(action_ordinals) != len(set(action_ordinals)):
+            return _block_error(
+                stage,
+                "SEM_BATCH_SUBACTION_DUPLICATE",
+                "subaction ordinals must be unique",
+                scan["stream_ledger_relative_path"],
+                "$.entries[%d].current_action.subactions" % ordinal,
+            )
+        if any(
+            parse_timestamp(item["first_observable_at"]) < action_reveal
+            or parse_timestamp(item["first_observable_at"]) <= committed_at
+            for item in subactions
+        ):
+            return _block_error(
+                stage,
+                "SEM_BATCH_SUBACTION_BEFORE_COMMIT",
+                "no subaction may become observable before the atomic bundle gate",
+                scan["stream_ledger_relative_path"],
+                "$.entries[%d].current_action.subactions" % ordinal,
+            )
+        if trajectory_mode == "batch_tool_model_steps":
+            if action["action_unit"] != "batch_bundle":
+                return _block_error(
+                    stage,
+                    "SEM_BATCH_NOT_ATOMIC",
+                    "batch-tool actions must be committed and revealed as one bundle",
+                    scan["stream_ledger_relative_path"],
+                    "$.entries[%d].current_action.action_unit" % ordinal,
+                )
+        elif action["action_unit"] != "single_action" or len(subactions) != 1:
+            return _block_error(
+                stage,
+                "SEM_STANDARD_ACTION_NOT_SINGLE",
+                "standard-step current actions require one atomic action",
+                scan["stream_ledger_relative_path"],
+                "$.entries[%d].current_action" % ordinal,
+            )
+        if action != raw_entry["current_action"]:
+            return _block_error(
+                stage,
+                "SEM_RAW_STREAM_PROJECTION",
+                "current action bytes, time, subactions, and successor must equal the registered raw-parser projection",
+                scan["stream_ledger_relative_path"],
+                "$.entries[%d].current_action" % ordinal,
+            )
+    if previous != scan["prefix_chain_tip_sha256"]:
+        return _block_error(
+            stage,
+            "SEM_PREFIX_CHAIN_TIP",
+            "manifest prefix tip does not equal the complete chain tip",
+            BLOCK_LOCATION_MANIFEST_FILE,
+            "$.unit_scans.%s.prefix_chain_tip_sha256" % unit_alias,
+        )
+    if scan["ordinal_boundary_location_ids"] != boundary_ids:
+        return _block_error(
+            stage,
+            "SEM_EXACT_LOCATION_ROSTER",
+            "manifest location roster must equal every physical ordinal location in order",
+            BLOCK_LOCATION_MANIFEST_FILE,
+            "$.unit_scans.%s.ordinal_boundary_location_ids" % unit_alias,
+        )
+    return None
+
+
+def _production_authority_gap_error(
+    frame: Mapping[str, Any],
+) -> Optional[Dict[str, Any]]:
+    """Fail closed until syntax is anchored to external execution authority."""
+
+    if frame["block_scope"] != "ontology_block_a":
+        return None
+    return _block_error(
+        STAGE_ORDER[3],
+        "SEM_PRODUCTION_EXTERNAL_AUTHORITY_UNAVAILABLE",
+        (
+            "production requires a registered parser over immutable published "
+            "source bytes, non-rollback append-only streaming commit receipts "
+            "with a trusted clock, and platform-enforced ACL/access logs bound "
+            "to external commitments, plus an externally committed complete "
+            "append-only role-history checkpoint-to-tip proof and an external "
+            "credential authority providing privacy-preserving stable principal "
+            "commitments across aliases, roles, and blocks; self-sealed "
+            "timestamps, exposure ledgers, alias inequality, and "
+            "history_source_ref digests prove syntax only"
+        ),
+        BLOCK_FRAME_FILE,
+        "$.block_scope",
+    )
+
+
+def _first_role_assignment_interval_error(
+    loaded: Mapping[str, Any],
+    role_by_alias: Mapping[str, str],
+) -> Optional[Dict[str, Any]]:
+    """Bind every in-bundle role use to an already-effective assignment."""
+
+    stage = STAGE_ORDER[3]
+    fixed = loaded["fixed"]
+    frame = fixed["block_frame"]
+    role_history = fixed["role_history"]
+    assignments = {
+        item["actor_alias"]: item
+        for item in role_history["assignments"]
+    }
+    first_uses: Dict[str, datetime] = {}
+    last_uses: Dict[str, datetime] = {}
+
+    def record_use(alias: str, timestamp: str) -> None:
+        occurred = parse_timestamp(timestamp)
+        if alias not in first_uses or occurred < first_uses[alias]:
+            first_uses[alias] = occurred
+        if alias not in last_uses or occurred > last_uses[alias]:
+            last_uses[alias] = occurred
+
+    for coordinator in loaded["referenced"].get(
+        "coordinator_envelope", {}
+    ).values():
+        record_use(
+            coordinator["provenance"]["generator_alias"],
+            coordinator["created_at"],
+        )
+    for prefix_entries in loaded["referenced"].get(
+        "prefix_commit", {}
+    ).values():
+        for entry in prefix_entries:
+            for decision in entry["generator_decisions"]:
+                record_use(
+                    decision["generator_alias"],
+                    decision["decided_at"],
+                )
+    for submissions in loaded["referenced"].get(
+        "block_a0_submissions", {}
+    ).values():
+        for submission in submissions["submissions"]:
+            record_use(
+                submission["annotator_alias"],
+                submission["frozen_at"],
+            )
+    for adjudication in loaded["referenced"].get(
+        "block_a0_adjudication", {}
+    ).values():
+        record_use(
+            adjudication["adjudicator_alias"],
+            adjudication["frozen_at"],
+        )
+    for label in loaded["referenced"].get("a0_label", {}).values():
+        record_use(label["annotator_alias"], label["frozen_at"])
+    for label in loaded["referenced"].get("a1_label", {}).values():
+        record_use(label["annotator_alias"], label["frozen_at"])
+
+    a0_barrier = fixed["block_barrier"]
+    a1_barrier = fixed["block_a1_barrier"]
+    stage_b_gate = fixed["stage_b_gate"]
+    record_use(a0_barrier["sealed_by"], a0_barrier["sealed_at"])
+    record_use(a1_barrier["sealed_by"], a1_barrier["sealed_at"])
+    record_use(
+        stage_b_gate["authorized_by"],
+        stage_b_gate["authorized_at"],
+    )
+    for event in fixed["block_exposure_events"]:
+        record_use(event["actor_alias"], event["occurred_at"])
+        for recipient in event["recipient_aliases"]:
+            record_use(recipient, event["occurred_at"])
+
+    complete_through = parse_timestamp(
+        role_history["complete_through"]
+    )
+    for alias, role in role_by_alias.items():
+        assignment = assignments.get(alias)
+        if assignment is None:
+            return _block_error(
+                stage,
+                "SEM_ROLE_ASSIGNMENT_INTERVAL",
+                "every registered role must have one permanent assignment",
+                ROLE_HISTORY_FILE,
+                "$.assignments",
+            )
+        effective_from = parse_timestamp(assignment["effective_from"])
+        if (
+            effective_from > complete_through
+            or (
+                alias in first_uses
+                and (
+                    effective_from > first_uses[alias]
+                    or last_uses[alias] > complete_through
+                )
+            )
+            or (
+                frame["block_scope"] == "synthetic_test_only"
+                and assignment["first_block_id"] != frame["block_id"]
+            )
+        ):
+            return _block_error(
+                stage,
+                "SEM_ROLE_ASSIGNMENT_INTERVAL",
+                (
+                    "artifact authors, sealers, access/delivery actors, and "
+                    "recipients must use a role only after effective_from and "
+                    "within complete_through; synthetic first_block_id must "
+                    "equal the current test block"
+                ),
+                ROLE_HISTORY_FILE,
+                "$.assignments.%s" % alias,
+            )
+    return None
+
+
+def first_full_block_semantic_error(
+    loaded: Mapping[str, Any],
+) -> Tuple[Optional[Dict[str, Any]], Dict[str, str]]:
+    stage = STAGE_ORDER[3]
+    fixed = loaded["fixed"]
+    frame = fixed["block_frame"]
+    manifest = fixed["block_location_manifest"]
+    a0_barrier = fixed["block_barrier"]
+    a1_barrier = fixed["block_a1_barrier"]
+    stage_b_gate = fixed["stage_b_gate"]
+    role_history = fixed["role_history"]
+    source_categories: Dict[str, str] = {}
+
+    block_ids = {
+        item["block_id"]
+        for item in (frame, manifest, a0_barrier, a1_barrier, stage_b_gate)
+    }
+    block_scopes = {
+        item["block_scope"]
+        for item in (frame, manifest, a0_barrier, a1_barrier, stage_b_gate)
+    }
+    if len(block_ids) != 1 or len(block_scopes) != 1:
+        return (
+            _block_error(
+                stage,
+                "SEM_BLOCK_IDENTITY_SPLIT",
+                "all full-block artifacts must bind one block id and scope",
+            ),
+            source_categories,
+        )
+
+    frame_units = frame["expected_units"]
+    if frame["block_scope"] == "ontology_block_a":
+        task_to_configs: Dict[str, Set[str]] = {}
+        for item in frame_units:
+            task_to_configs.setdefault(item["task_id"], set()).add(
+                item["hosted_config_id"]
+            )
+        if len(frame_units) != 48 or any(
+            len(configs) != 6 for configs in task_to_configs.values()
+        ):
+            return (
+                _block_error(
+                    stage,
+                    "SEM_PRODUCTION_FRAME_CARDINALITY",
+                    "frozen ontology Block A is 48 units with exactly six hosted configs per task",
+                    BLOCK_FRAME_FILE,
+                    "$.expected_units",
+                ),
+                source_categories,
+            )
+        authority_error = _production_authority_gap_error(frame)
+        if authority_error:
+            return authority_error, source_categories
+    if frame["expected_unit_count"] != len(frame_units):
+        return (
+            _block_error(
+                stage,
+                "SEM_EXTERNAL_FRAME_COUNT",
+                "frame count must equal its externally frozen physical roster",
+                BLOCK_FRAME_FILE,
+                "$.expected_unit_count",
+            ),
+            source_categories,
+        )
+    frame_aliases = [item["unit_alias"] for item in frame_units]
+    frame_pairs = [
+        (item["task_id"], item["hosted_config_id"]) for item in frame_units
+    ]
+    if len(frame_aliases) != len(set(frame_aliases)) or len(frame_pairs) != len(
+        set(frame_pairs)
+    ):
+        return (
+            _block_error(
+                stage,
+                "SEM_EXTERNAL_FRAME_DUPLICATE",
+                "frame unit aliases and task/config pairs must be unique",
+                BLOCK_FRAME_FILE,
+                "$.expected_units",
+            ),
+            source_categories,
+        )
+    frame_by_alias = {item["unit_alias"]: item for item in frame_units}
+    scans = manifest["unit_scans"]
+    scan_aliases = [item["unit_alias"] for item in scans]
+    if (
+        len(scan_aliases) != len(set(scan_aliases))
+        or set(scan_aliases) != set(frame_aliases)
+    ):
+        return (
+            _block_error(
+                stage,
+                "SEM_FULL_FRAME_COVERAGE",
+                "unit scans must equal the external frame; caller counts cannot shrink it",
+                BLOCK_LOCATION_MANIFEST_FILE,
+                "$.unit_scans",
+            ),
+            source_categories,
+        )
+
+    registry = a0_barrier["role_registry"]
+    role_fields = (
+        ("a0_annotator_aliases", "a0_annotator"),
+        ("a0_adjudicator_aliases", "a0_adjudicator"),
+        ("a1_annotator_aliases", "a1_annotator"),
+        ("stage_b_annotator_aliases", "stage_b_annotator"),
+        ("coordinator_aliases", "coordinator"),
+        ("candidate_generator_aliases", "candidate_generator"),
+        ("reference_aliases", "reference"),
+    )
+    role_by_alias: Dict[str, str] = {}
+    for field, role in role_fields:
+        for alias in registry[field]:
+            if alias in role_by_alias:
+                return (
+                    _block_error(
+                        stage,
+                        "SEM_ROLE_POOL_OVERLAP",
+                        "all coordinator/generator/reference/A0/A1/Stage-B pools must be pairwise disjoint",
+                        BLOCK_BARRIER_FILE,
+                        "$.role_registry",
+                    ),
+                    source_categories,
+                )
+            role_by_alias[alias] = role
+    history_assignments = role_history["assignments"]
+    history_aliases = [item["actor_alias"] for item in history_assignments]
+    if len(history_aliases) != len(set(history_aliases)):
+        return (
+            _block_error(
+                stage,
+                "SEM_ROLE_HISTORY_REASSIGNMENT",
+                "append-only permanent history cannot assign one alias twice",
+                ROLE_HISTORY_FILE,
+                "$.assignments",
+            ),
+            source_categories,
+        )
+    history_roles = {
+        item["actor_alias"]: item["role"] for item in history_assignments
+    }
+    if history_roles != role_by_alias:
+        return (
+            _block_error(
+                stage,
+                "SEM_ROLE_HISTORY_MISMATCH",
+                "current role registry must exactly reconcile with permanent project history",
+                ROLE_HISTORY_FILE,
+                "$.assignments",
+            ),
+            source_categories,
+        )
+    if (
+        a0_barrier["sealed_by"] not in registry["coordinator_aliases"]
+        or stage_b_gate["authorized_by"]
+        not in registry["coordinator_aliases"]
+    ):
+        return (
+            _block_error(
+                stage,
+                "SEM_COORDINATOR_ROLE",
+                "barrier sealing and Stage-B authorization require registered coordinators",
+            ),
+            source_categories,
+        )
+
+    frame_time = parse_timestamp(frame["frozen_at"])
+    manifest_time = parse_timestamp(manifest["frozen_at"])
+    a0_seal = parse_timestamp(a0_barrier["sealed_at"])
+    a1_seal = parse_timestamp(a1_barrier["sealed_at"])
+    stage_b_time = parse_timestamp(stage_b_gate["authorized_at"])
+    ledger_closed = parse_timestamp(stage_b_gate["ledger_closed_at"])
+    if not (
+        frame_time < manifest_time < a0_seal < a1_seal < stage_b_time
+        <= ledger_closed
+    ):
+        return (
+            _block_error(
+                stage,
+                "SEM_FULL_BLOCK_BARRIER_ORDER",
+                "required order is frame/manifest -> all A0 -> A0 barrier -> all A1 -> A1 barrier -> Stage B",
+            ),
+            source_categories,
+        )
+    if parse_timestamp(role_history["complete_through"]) < ledger_closed:
+        return (
+            _block_error(
+                stage,
+                "SEM_ROLE_HISTORY_INCOMPLETE",
+                "permanent role history must be complete through block ledger close",
+                ROLE_HISTORY_FILE,
+                "$.complete_through",
+            ),
+            source_categories,
+        )
+    role_interval_error = _first_role_assignment_interval_error(
+        loaded, role_by_alias
+    )
+    if role_interval_error:
+        return role_interval_error, source_categories
+
+    coordinators: Dict[str, Mapping[str, Any]] = {}
+    scans_by_alias = {item["unit_alias"]: item for item in scans}
+    for unit_alias, frame_entry in frame_by_alias.items():
+        coordinator = _referenced_value(
+            loaded,
+            "coordinator_envelope",
+            frame_entry["coordinator_envelope_relative_path"],
+        )
+        coordinators[unit_alias] = coordinator
+        identity = coordinator["identity"]
+        if (
+            coordinator["unit_alias"] != unit_alias
+            or identity["task_id"] != frame_entry["task_id"]
+            or identity["hosted_config_id"]
+            != frame_entry["hosted_config_id"]
+        ):
+            return (
+                _block_error(
+                    stage,
+                    "SEM_FRAME_COORDINATOR_LINK",
+                    "external frame unit does not match the physical coordinator envelope",
+                    frame_entry["coordinator_envelope_relative_path"],
+                ),
+                source_categories,
+            )
+        if (
+            coordinator["provenance"]["generator_alias"]
+            not in registry["candidate_generator_aliases"]
+        ):
+            return (
+                _block_error(
+                    stage,
+                    "SEM_GENERATOR_ROLE_OR_INDEPENDENCE",
+                    "coordinator provenance generator must be in the permanent generator pool",
+                    frame_entry["coordinator_envelope_relative_path"],
+                    "$.provenance.generator_alias",
+                ),
+                source_categories,
+            )
+        error = _first_stream_semantic_error(
+            loaded,
+            unit_alias,
+            scans_by_alias[unit_alias],
+            coordinator,
+            set(registry["candidate_generator_aliases"]),
+        )
+        if error:
+            return error, source_categories
+
+    locations = manifest["locations"]
+    location_keys = [
+        (item["unit_alias"], item["boundary_location_id"])
+        for item in locations
+    ]
+    expected_location_keys: List[Tuple[str, str]] = []
+    for scan in scans:
+        expected_location_keys.extend(
+            (scan["unit_alias"], boundary_id)
+            for boundary_id in scan["ordinal_boundary_location_ids"]
+        )
+    if (
+        len(location_keys) != len(set(location_keys))
+        or set(location_keys) != set(expected_location_keys)
+        or len(location_keys) != len(expected_location_keys)
+    ):
+        return (
+            _block_error(
+                stage,
+                "SEM_EXACT_LOCATION_ROSTER",
+                "manifest must include every and only one location for every physical ordinal",
+                BLOCK_LOCATION_MANIFEST_FILE,
+                "$.locations",
+            ),
+            source_categories,
+        )
+    if a0_barrier["expected_unit_scan_count"] != len(frame_units):
+        return (
+            _block_error(
+                stage,
+                "SEM_BARRIER_FRAME_COUNT",
+                "A0 barrier count must derive from the external frame",
+                BLOCK_BARRIER_FILE,
+                "$.expected_unit_scan_count",
+            ),
+            source_categories,
+        )
+    if a0_barrier["expected_location_count"] != len(location_keys):
+        return (
+            _block_error(
+                stage,
+                "SEM_BARRIER_LOCATION_COUNT",
+                "A0 barrier location count must equal the exact manifest set",
+                BLOCK_BARRIER_FILE,
+                "$.expected_location_count",
+            ),
+            source_categories,
+        )
+
+    freeze_keys = [
+        (item["unit_alias"], item["boundary_location_id"])
+        for item in a0_barrier["location_freezes"]
+    ]
+    if (
+        len(freeze_keys) != len(set(freeze_keys))
+        or set(freeze_keys) != set(location_keys)
+    ):
+        return (
+            _block_error(
+                stage,
+                "SEM_A0_BARRIER_LOCATION_SET",
+                "A0 barrier must freeze the exact location set",
+                BLOCK_BARRIER_FILE,
+                "$.location_freezes",
+            ),
+            source_categories,
+        )
+    freeze_by_key = {
+        (item["unit_alias"], item["boundary_location_id"]): item
+        for item in a0_barrier["location_freezes"]
+    }
+    all_event_records: Dict[
+        str,
+        Tuple[
+            Tuple[str, str],
+            Mapping[str, Any],
+            Mapping[str, Any],
+            Mapping[str, Any],
+        ],
+    ] = {}
+    latest_a0 = manifest_time
+    for location in locations:
+        key = (location["unit_alias"], location["boundary_location_id"])
+        unit_alias, boundary_id = key
+        scan = scans_by_alias[unit_alias]
+        coordinator = coordinators[unit_alias]
+        prefix_entries = _referenced_value(
+            loaded, "prefix_commit", scan["prefix_commit_log_relative_path"]
+        )
+        prefix_by_location = {
+            item["boundary_location_id"]: item for item in prefix_entries
+        }
+        prefix = prefix_by_location[boundary_id]
+        ordinal = prefix["observation_ordinal"]
+        a0_input = _referenced_value(
+            loaded, "a0_input", location["a0_input_relative_path"]
+        )
+        submissions = _referenced_value(
+            loaded,
+            "block_a0_submissions",
+            location["a0_submissions_relative_path"],
+        )
+        adjudication = _referenced_value(
+            loaded,
+            "block_a0_adjudication",
+            location["a0_adjudication_container_relative_path"],
+        )
+        if (
+            a0_input["unit_alias"] != unit_alias
+            or a0_input["coordinator_envelope_commitment_sha256"]
+            != canonical_sha256(coordinator)
+            or a0_input["boundary_location_id"] != boundary_id
+            or a0_input["cutoff_observation_ordinal"] != ordinal
+            or a0_input["prefix_chain_tip_sha256"] != prefix["entry_sha256"]
+            or a0_input["a0_prefix_payload_sha256"]
+            != prefix["a0_prefix_payload_sha256"]
+            or a0_prefix_payload_sha256(a0_input, ordinal)
+            != prefix["a0_prefix_payload_sha256"]
+        ):
+            return (
+                _block_error(
+                    stage,
+                    "SEM_LOCATION_A0_PREFIX_LINK",
+                    "location A0 input must bind exactly its outcome-blind ordinal prefix",
+                    location["a0_input_relative_path"],
+                ),
+                source_categories,
+            )
+        if len(a0_input["prefix_observations"]) != ordinal + 1:
+            return (
+                _block_error(
+                    stage,
+                    "SEM_LOCATION_A0_PREFIX_LENGTH",
+                    "A0 input cannot omit or include observations beyond its location",
+                    location["a0_input_relative_path"],
+                    "$.prefix_observations",
+                ),
+                source_categories,
+            )
+        if any(
+            canonical_sha256(observation)
+            != prefix_entries[index]["observation_sha256"]
+            for index, observation in enumerate(
+                a0_input["prefix_observations"]
+            )
+        ):
+            return (
+                _block_error(
+                    stage,
+                    "SEM_LOCATION_A0_OBSERVATION_LINK",
+                    "A0 prefix observations do not match the committed ordinal stream",
+                    location["a0_input_relative_path"],
+                    "$.prefix_observations",
+                ),
+                source_categories,
+            )
+        if (
+            submissions["unit_alias"] != unit_alias
+            or submissions["boundary_location_id"] != boundary_id
+            or submissions["a0_input_ref"] != artifact_ref(a0_input)
+            or adjudication["unit_alias"] != unit_alias
+            or adjudication["boundary_location_id"] != boundary_id
+        ):
+            return (
+                _block_error(
+                    stage,
+                    "SEM_LOCATION_A0_CONTAINER_LINK",
+                    "submissions and adjudication container must bind one physical location",
+                    location["a0_adjudication_container_relative_path"],
+                ),
+                source_categories,
+            )
+        submission_aliases = [
+            item["annotator_alias"] for item in submissions["submissions"]
+        ]
+        if (
+            len(submission_aliases) != 2
+            or len(set(submission_aliases)) != 2
+            or not set(submission_aliases).issubset(
+                set(registry["a0_annotator_aliases"])
+            )
+        ):
+            return (
+                _block_error(
+                    stage,
+                    "SEM_A0_SUBMISSION_INDEPENDENCE",
+                    "every location needs exactly two distinct registered A0 submissions, including no-event locations",
+                    location["a0_submissions_relative_path"],
+                    "$.submissions",
+                ),
+                source_categories,
+            )
+        expected_codebook = coordinator["provenance"]["version_hashes"][
+            "codebook_sha256"
+        ]
+        if submissions["codebook_sha256"] != expected_codebook:
+            return (
+                _block_error(
+                    stage,
+                    "SEM_A0_SUBMISSION_CODEBOOK",
+                    "A0 submissions must use the coordinator-frozen codebook",
+                    location["a0_submissions_relative_path"],
+                    "$.codebook_sha256",
+                ),
+                source_categories,
+            )
+        raw_to_annotator: Dict[str, str] = {}
+        raw_by_id: Dict[str, Mapping[str, Any]] = {}
+        for submission in submissions["submissions"]:
+            for raw in submission["raw_labels"]:
+                raw_to_annotator[raw["a0_raw_label_id"]] = submission[
+                    "annotator_alias"
+                ]
+                raw_by_id[raw["a0_raw_label_id"]] = raw
+        disposition_ids = [
+            item["a0_raw_label_id"]
+            for item in adjudication["raw_label_dispositions"]
+        ]
+        if (
+            len(disposition_ids) != len(set(disposition_ids))
+            or set(disposition_ids) != set(raw_to_annotator)
+        ):
+            return (
+                _block_error(
+                    stage,
+                    "SEM_A0_RAW_DISPOSITION_COVERAGE",
+                    "the single adjudication container must dispose every raw id exactly once",
+                    location["a0_adjudication_container_relative_path"],
+                    "$.raw_label_dispositions",
+                ),
+                source_categories,
+            )
+        if (
+            adjudication["adjudicator_alias"]
+            not in registry["a0_adjudicator_aliases"]
+        ):
+            return (
+                _block_error(
+                    stage,
+                    "SEM_A0_ADJUDICATOR_ROLE",
+                    "A0-only adjudication requires the permanent A0 adjudicator pool",
+                    location["a0_adjudication_container_relative_path"],
+                    "$.adjudicator_alias",
+                ),
+                source_categories,
+            )
+        event_ids = [
+            item["adjudicated_event_id"] for item in adjudication["events"]
+        ]
+        if len(event_ids) != len(set(event_ids)):
+            return (
+                _block_error(
+                    stage,
+                    "SEM_A0_EVENT_DUPLICATE",
+                    "same-location events require distinct adjudicated ids",
+                    location["a0_adjudication_container_relative_path"],
+                    "$.events",
+                ),
+                source_categories,
+            )
+        dispositions_by_event: Dict[str, Set[str]] = {
+            event_id: set() for event_id in event_ids
+        }
+        for disposition in adjudication["raw_label_dispositions"]:
+            if disposition["disposition"] == "adjudicated_event":
+                event_id = disposition["adjudicated_event_id"]
+                if event_id not in dispositions_by_event:
+                    return (
+                        _block_error(
+                            stage,
+                            "SEM_A0_DISPOSITION_DANGLING_EVENT",
+                            "raw disposition references an event outside the one adjudication container",
+                            location[
+                                "a0_adjudication_container_relative_path"
+                            ],
+                        ),
+                        source_categories,
+                    )
+                dispositions_by_event[event_id].add(
+                    disposition["a0_raw_label_id"]
+                )
+        label_times: List[datetime] = []
+        for container_event in adjudication["events"]:
+            event_id = container_event["adjudicated_event_id"]
+            supports = set(
+                container_event["supporting_a0_raw_label_ids"]
+            )
+            if (
+                supports != dispositions_by_event[event_id]
+                or len({raw_to_annotator[item] for item in supports}) < 2
+            ):
+                return (
+                    _block_error(
+                        stage,
+                        "SEM_A0_EVENT_RAW_SUPPORT",
+                        "each event must use exactly its dispositions and support from both independent submissions",
+                        location["a0_adjudication_container_relative_path"],
+                        "$.events.%s.supporting_a0_raw_label_ids" % event_id,
+                    ),
+                    source_categories,
+                )
+            label = _referenced_value(
+                loaded,
+                "a0_label",
+                container_event["a0_label_relative_path"],
+            )
+            if (
+                label["unit_alias"] != unit_alias
+                or label["boundary_location_id"] != boundary_id
+                or label["adjudicated_event_id"] != event_id
+                or set(label["supporting_a0_raw_label_ids"]) != supports
+                or label["a0_input_ref"] != artifact_ref(a0_input)
+                or label["annotator_alias"]
+                != adjudication["adjudicator_alias"]
+            ):
+                return (
+                    _block_error(
+                        stage,
+                        "SEM_A0_EVENT_LINK",
+                        "A0 event label, location, raw support, and adjudicator cannot be spliced",
+                        container_event["a0_label_relative_path"],
+                    ),
+                    source_categories,
+                )
+            category, error = _source_category_or_error(
+                loaded,
+                a0_input,
+                label,
+                container_event,
+                container_event["a0_label_relative_path"],
+            )
+            if error:
+                return error, source_categories
+            assert category is not None
+            source_categories[event_id] = category
+            support_raws = [
+                raw_by_id[raw_id]
+                for raw_id in sorted(
+                    supports, key=lambda value: value.encode("utf-8")
+                )
+            ]
+            label_exact_projection = a0_label_exact_match_projection(
+                label
+            )
+            resolved_source_labels = utf8_sorted(
+                {
+                    source
+                    for raw in support_raws
+                    for source in raw["semantic_payload"][
+                        "update_source_labels"
+                    ]
+                }
+            )
+            if (
+                any(
+                    a0_raw_exact_match_projection(
+                        raw["semantic_payload"]
+                    )
+                    != label_exact_projection
+                    for raw in support_raws
+                )
+                or resolved_source_labels
+                != a0_label_source_projection(label)
+                or container_event["raw_support_adjudication"]
+                != expected_raw_support_adjudication(
+                    label, support_raws
+                )
+            ):
+                return (
+                    _block_error(
+                        stage,
+                        "SEM_A0_RAW_SUPPORT_SEMANTICS",
+                        (
+                            "every raw support must exactly match the "
+                            "adjudicated proposition, obligation, normative "
+                            "difference, and boundary; source-label "
+                            "disagreement is allowed only through the frozen "
+                            "set-union rule and must be recorded exactly"
+                        ),
+                        location[
+                            "a0_adjudication_container_relative_path"
+                        ],
+                        "$.events.%s.raw_support_adjudication"
+                        % event_id,
+                    ),
+                    source_categories,
+                )
+            label_times.append(parse_timestamp(label["frozen_at"]))
+            if event_id in all_event_records:
+                return (
+                    _block_error(
+                        stage,
+                        "SEM_GLOBAL_EVENT_ID_DUPLICATE",
+                        "adjudicated event ids must be unique across the block",
+                        location["a0_adjudication_container_relative_path"],
+                    ),
+                    source_categories,
+                )
+            all_event_records[event_id] = (
+                key,
+                a0_input,
+                label,
+                container_event,
+            )
+        submissions_time = parse_timestamp(submissions["frozen_at"])
+        adjudication_time = parse_timestamp(adjudication["frozen_at"])
+        individual_submission_times = [
+            parse_timestamp(item["frozen_at"])
+            for item in submissions["submissions"]
+        ]
+        if not (
+            manifest_time
+            < min(individual_submission_times)
+            <= max(individual_submission_times)
+            <= submissions_time
+            < adjudication_time
+            < a0_seal
+        ):
+            return (
+                _block_error(
+                    stage,
+                    "SEM_A0_ONLY_ADJUDICATION_ORDER",
+                    "manifest -> both raw submissions -> A0-only adjudication -> full A0 barrier is required",
+                    location["a0_adjudication_container_relative_path"],
+                ),
+                source_categories,
+            )
+        if label_times and not (
+            submissions_time
+            < min(label_times)
+            <= max(label_times)
+            <= adjudication_time
+        ):
+            return (
+                _block_error(
+                    stage,
+                    "SEM_A0_CHILD_FREEZE_ORDER",
+                    (
+                        "every physical A0 event label must freeze after its "
+                        "submission container and no later than its "
+                        "adjudication container"
+                    ),
+                    location[
+                        "a0_adjudication_container_relative_path"
+                    ],
+                    "$.events",
+                ),
+                source_categories,
+            )
+        latest_a0 = max(
+            [latest_a0, submissions_time, adjudication_time]
+            + label_times
+        )
+        freeze = freeze_by_key[key]
+        expected_freeze_events = [
+            {
+                "adjudicated_event_id": item["adjudicated_event_id"],
+                "supporting_a0_raw_label_ids": item[
+                    "supporting_a0_raw_label_ids"
+                ],
+                "frozen_at": _referenced_value(
+                    loaded, "a0_label", item["a0_label_relative_path"]
+                )["frozen_at"],
+            }
+            for item in adjudication["events"]
+        ]
+        flattened_raw_ids = sorted(
+            raw_to_annotator, key=lambda value: value.encode("utf-8")
+        )
+        if (
+            freeze["a0_input_ref"] != artifact_ref(a0_input)
+            or freeze["a0_submissions_ref"] != artifact_ref(submissions)
+            or freeze["a0_adjudication_container_ref"]
+            != artifact_ref(adjudication)
+            or freeze["a0_raw_label_ids"] != flattened_raw_ids
+            or freeze["adjudicated_events"] != expected_freeze_events
+            or freeze["prefix_chain_tip_sha256"]
+            != a0_input["prefix_chain_tip_sha256"]
+            or freeze["a0_submissions_frozen_at"]
+            != submissions["frozen_at"]
+            or freeze["a0_adjudication_frozen_at"]
+            != adjudication["frozen_at"]
+        ):
+            return (
+                _block_error(
+                    stage,
+                    "SEM_A0_BARRIER_FREEZE_MISMATCH",
+                    "A0 barrier must exactly freeze submissions, raw ids, the single container, all 0..N events, and prefix tip",
+                    BLOCK_BARRIER_FILE,
+                    "$.location_freezes.%s.%s" % key,
+                ),
+                source_categories,
+            )
+    if latest_a0 >= a0_seal:
+        return (
+            _block_error(
+                stage,
+                "SEM_A0_BARRIER_SEALED_EARLY",
+                "A0 barrier must follow the last location adjudication",
+                BLOCK_BARRIER_FILE,
+                "$.sealed_at",
+            ),
+            source_categories,
+        )
+    if (
+        a0_barrier["expected_adjudicated_event_count"]
+        != len(all_event_records)
+    ):
+        return (
+            _block_error(
+                stage,
+                "SEM_A0_BARRIER_EVENT_COUNT",
+                "A0 barrier event count must derive from the exact 0..N event sets",
+                BLOCK_BARRIER_FILE,
+                "$.expected_adjudicated_event_count",
+            ),
+            source_categories,
+        )
+
+    a1_freezes = a1_barrier["event_freezes"]
+    a1_event_ids = [item["adjudicated_event_id"] for item in a1_freezes]
+    if (
+        len(a1_event_ids) != len(set(a1_event_ids))
+        or set(a1_event_ids) != set(all_event_records)
+        or a1_barrier["expected_adjudicated_event_count"]
+        != len(all_event_records)
+    ):
+        return (
+            _block_error(
+                stage,
+                "SEM_A1_EXACT_EVENT_SET",
+                "full A1 barrier requires exactly one reveal/label path for every block event",
+                BLOCK_A1_BARRIER_FILE,
+                "$.event_freezes",
+            ),
+            source_categories,
+        )
+    latest_a1 = a0_seal
+    for freeze in a1_freezes:
+        event_id = freeze["adjudicated_event_id"]
+        (unit_alias, boundary_id), a0_input, a0_label, _ = all_event_records[
+            event_id
+        ]
+        if (
+            freeze["unit_alias"] != unit_alias
+            or freeze["boundary_location_id"] != boundary_id
+        ):
+            return (
+                _block_error(
+                    stage,
+                    "SEM_A1_EVENT_LOCATION_SPLICE",
+                    "A1 event cannot be linked to another unit or location",
+                    BLOCK_A1_BARRIER_FILE,
+                    "$.event_freezes.%s" % event_id,
+                ),
+                source_categories,
+            )
+        reveal = _referenced_value(
+            loaded, "a1_reveal", freeze["a1_reveal_relative_path"]
+        )
+        a1_label = _referenced_value(
+            loaded, "a1_label", freeze["a1_label_relative_path"]
+        )
+        if (
+            reveal["unit_alias"] != unit_alias
+            or reveal["adjudicated_event_id"] != event_id
+            or reveal["a0_input_ref"] != artifact_ref(a0_input)
+            or reveal["a0_label_ref"] != artifact_ref(a0_label)
+            or a1_label["unit_alias"] != unit_alias
+            or a1_label["adjudicated_event_id"] != event_id
+            or a1_label["a0_input_ref"] != artifact_ref(a0_input)
+            or a1_label["a0_label_ref"] != artifact_ref(a0_label)
+            or a1_label["a1_reveal_ref"] != artifact_ref(reveal)
+        ):
+            return (
+                _block_error(
+                    stage,
+                    "SEM_A1_EVENT_PATH_SPLICE",
+                    "A0 source/obligation/event and A1 phenotype paths must remain event-local",
+                    freeze["a1_label_relative_path"],
+                ),
+                source_categories,
+            )
+        if a1_label["annotator_alias"] not in registry[
+            "a1_annotator_aliases"
+        ]:
+            return (
+                _block_error(
+                    stage,
+                    "SEM_A1_ANNOTATOR_ROLE",
+                    "A1 label requires the permanent A1 pool",
+                    freeze["a1_label_relative_path"],
+                    "$.annotator_alias",
+                ),
+                source_categories,
+            )
+        reveal_time = parse_timestamp(reveal["revealed_at"])
+        label_time = parse_timestamp(a1_label["frozen_at"])
+        if not (a0_seal < reveal_time < label_time < a1_seal):
+            return (
+                _block_error(
+                    stage,
+                    "SEM_WHOLE_BLOCK_A1_EARLY",
+                    "no A1 reveal may occur until every A0 container and the full A0 barrier are frozen",
+                    freeze["a1_reveal_relative_path"],
+                ),
+                source_categories,
+            )
+        if freeze["a1_label_frozen_at"] != a1_label["frozen_at"]:
+            return (
+                _block_error(
+                    stage,
+                    "SEM_A1_BARRIER_FREEZE_TIME",
+                    "A1 barrier timestamp must equal the physical A1 label",
+                    BLOCK_A1_BARRIER_FILE,
+                ),
+                source_categories,
+            )
+        latest_a1 = max(latest_a1, label_time)
+        scan = scans_by_alias[unit_alias]
+        prefix_entries = _referenced_value(
+            loaded, "prefix_commit", scan["prefix_commit_log_relative_path"]
+        )
+        prefix_by_location = {
+            item["boundary_location_id"]: item for item in prefix_entries
+        }
+        ordinal = prefix_by_location[boundary_id]["observation_ordinal"]
+        stream = _referenced_value(
+            loaded, "block_stream_ledger", scan["stream_ledger_relative_path"]
+        )
+        action = stream["entries"][ordinal]["current_action"]
+        atomicity = freeze["reveal_atomicity"]
+        if action["kind"] != "current_action":
+            return (
+                _block_error(
+                    stage,
+                    "SEM_A1_WITHOUT_CURRENT_ACTION",
+                    "an adjudicated behavioral event must bind a current action record",
+                    BLOCK_A1_BARRIER_FILE,
+                    "$.event_freezes.%s.reveal_atomicity" % event_id,
+                ),
+                source_categories,
+            )
+        if (
+            atomicity["trajectory_mode"] != stream["trajectory_mode"]
+            or atomicity["stream_observation_ordinal"] != ordinal
+            or atomicity["stream_action_sha256"]
+            != action["action_bytes_sha256"]
+            or atomicity["entire_action_unit_revealed_at"]
+            != reveal["revealed_at"]
+            or (
+                action["action_unit"] == "batch_bundle"
+                and atomicity["action_unit"] != "batch_bundle"
+            )
+            or (
+                action["action_unit"] == "single_action"
+                and atomicity["action_unit"] != "single_action"
+            )
+        ):
+            return (
+                _block_error(
+                    stage,
+                    "SEM_A1_STREAM_ACTION_LINK",
+                    "A1 reveal must bind the exact current action or atomic batch",
+                    BLOCK_A1_BARRIER_FILE,
+                    "$.event_freezes.%s.reveal_atomicity" % event_id,
+                ),
+                source_categories,
+            )
+        if atomicity["action_unit"] == "batch_bundle":
+            ordinals = [
+                item["action_ordinal"] for item in action["subactions"]
+            ]
+            if (
+                atomicity["bundle_first_action_ordinal"] != min(ordinals)
+                or atomicity["bundle_last_action_ordinal"] != max(ordinals)
+            ):
+                return (
+                    _block_error(
+                        stage,
+                        "SEM_A1_BATCH_RANGE",
+                        "A1 batch range must bind every atomic subaction",
+                        BLOCK_A1_BARRIER_FILE,
+                    ),
+                    source_categories,
+                )
+        event_artifacts: Dict[str, Any] = {
+            "coordinator_envelope": coordinators[unit_alias],
+            "a0_input": a0_input,
+            "a0_label": a0_label,
+            "a1_reveal": reveal,
+            "a1_label": a1_label,
+            "prefix_commits": prefix_entries[: ordinal + 1],
+        }
+        if "omission_interval_relative_path" in freeze:
+            event_artifacts["omission_interval"] = _referenced_value(
+                loaded,
+                "omission_interval",
+                freeze["omission_interval_relative_path"],
+            )
+        component_error = first_semantic_error(event_artifacts)
+        if component_error:
+            copied = dict(component_error)
+            copied["artifact"] = freeze["a1_label_relative_path"]
+            return copied, source_categories
+    if latest_a1 >= a1_seal:
+        return (
+            _block_error(
+                stage,
+                "SEM_A1_BARRIER_SEALED_EARLY",
+                "A1 barrier must follow every A1 label",
+                BLOCK_A1_BARRIER_FILE,
+                "$.sealed_at",
+            ),
+            source_categories,
+        )
+    return None, source_categories
+
+
+def first_full_block_exposure_error(
+    loaded: Mapping[str, Any],
+) -> Optional[Dict[str, Any]]:
+    stage = STAGE_ORDER[5]
+    fixed = loaded["fixed"]
+    manifest = fixed["block_location_manifest"]
+    a0_barrier = fixed["block_barrier"]
+    a1_barrier = fixed["block_a1_barrier"]
+    gate = fixed["stage_b_gate"]
+    events = fixed["block_exposure_events"]
+    registry = a0_barrier["role_registry"]
+    role_by_alias: Dict[str, str] = {}
+    for field, role in (
+        ("a0_annotator_aliases", "a0_annotator"),
+        ("a0_adjudicator_aliases", "a0_adjudicator"),
+        ("a1_annotator_aliases", "a1_annotator"),
+        ("stage_b_annotator_aliases", "stage_b_annotator"),
+        ("coordinator_aliases", "coordinator"),
+        ("candidate_generator_aliases", "candidate_generator"),
+        ("reference_aliases", "reference"),
+    ):
+        role_by_alias.update({alias: role for alias in registry[field]})
+    a0_aliases = set(registry["a0_annotator_aliases"]) | set(
+        registry["a0_adjudicator_aliases"]
+    )
+    a1_aliases = set(registry["a1_annotator_aliases"])
+    stage_b_aliases = set(registry["stage_b_annotator_aliases"])
+    forbidden_for_a0 = {
+        "candidate_action",
+        "a1_reveal",
+        "a1_label",
+        "block_a1_barrier",
+        "stage_b_input",
+    }
+    a0_seal = parse_timestamp(a0_barrier["sealed_at"])
+    a1_seal = parse_timestamp(a1_barrier["sealed_at"])
+    stage_b_time = parse_timestamp(gate["authorized_at"])
+    ledger_closed = parse_timestamp(gate["ledger_closed_at"])
+    if (
+        gate["exposure_event_count"] != len(events)
+        or not events
+        or gate["exposure_ledger_id"] != events[0]["exposure_ledger_id"]
+    ):
+        return _block_error(
+            stage,
+            "EXPOSURE_LEDGER_COMPLETENESS",
+            "Stage-B gate must bind the declared complete delivery/access ledger",
+            STAGE_B_GATE_FILE,
+        )
+    previous_time: Optional[datetime] = None
+    seen_types: Set[str] = set()
+    visible_refs: Set[Tuple[str, str, str]] = set()
+    delivered_refs: Set[Tuple[str, str, str]] = set()
+    events_by_type: Dict[str, List[Tuple[int, Mapping[str, Any]]]] = {}
+    for index, event in enumerate(events):
+        occurred = parse_timestamp(event["occurred_at"])
+        if event["sequence"] != index:
+            return _block_error(
+                stage,
+                "EXPOSURE_SEQUENCE",
+                "exposure ledger sequence must be complete and contiguous",
+                BLOCK_EXPOSURE_LOG_FILE,
+                "$[%d].sequence" % index,
+            )
+        if (
+            event["block_id"] != a0_barrier["block_id"]
+            or event["exposure_ledger_id"] != gate["exposure_ledger_id"]
+            or (previous_time is not None and occurred < previous_time)
+            or occurred > ledger_closed
+        ):
+            return _block_error(
+                stage,
+                "EXPOSURE_LEDGER_ORDER_OR_SCOPE",
+                "all exposure events must be ordered, block-local, and included before ledger close",
+                BLOCK_EXPOSURE_LOG_FILE,
+                "$[%d]" % index,
+            )
+        previous_time = occurred
+        seen_types.add(event["event_type"])
+        events_by_type.setdefault(event["event_type"], []).append(
+            (index, event)
+        )
+        actor = event["actor_alias"]
+        if role_by_alias.get(actor) != event["actor_role"]:
+            return _block_error(
+                stage,
+                "EXPOSURE_ACTOR_ROLE_HISTORY",
+                "actor role must match the permanent role ledger",
+                BLOCK_EXPOSURE_LOG_FILE,
+                "$[%d].actor_role" % index,
+            )
+        recipients = set(event["recipient_aliases"])
+        if any(alias not in role_by_alias for alias in recipients):
+            return _block_error(
+                stage,
+                "EXPOSURE_UNKNOWN_RECIPIENT",
+                "every recipient must resolve through permanent role history",
+                BLOCK_EXPOSURE_LOG_FILE,
+                "$[%d].recipient_aliases" % index,
+            )
+        operation = event["exposure_operation"]
+        if (operation == "deliver") != bool(recipients):
+            return _block_error(
+                stage,
+                "EXPOSURE_DELIVERY_SEMANTICS",
+                "delivery requires recipients and non-delivery events cannot hide recipients",
+                BLOCK_EXPOSURE_LOG_FILE,
+                "$[%d]" % index,
+            )
+        classes = {
+            item["artifact_class"] for item in event["visible_artifacts"]
+        }
+        for visible in event["visible_artifacts"]:
+            ref = visible["artifact_ref"]
+            key = (
+                visible["artifact_class"],
+                ref["artifact_id"],
+                ref["sha256"],
+            )
+            visible_refs.add(key)
+            if operation == "deliver":
+                delivered_refs.add(key)
+        a0_access = operation == "access" and actor in a0_aliases
+        a0_delivery = operation == "deliver" and bool(
+            recipients & a0_aliases
+        )
+        if (a0_access or a0_delivery) and classes & forbidden_for_a0:
+            return _block_error(
+                stage,
+                "EXPOSURE_WHOLE_BLOCK_A0_LEAK",
+                "any action/A1/outcome delivery or access by any A0 role invalidates the entire block",
+                BLOCK_EXPOSURE_LOG_FILE,
+                "$[%d].visible_artifacts" % index,
+            )
+        a1_involved = (
+            actor in a1_aliases
+            or bool(recipients & a1_aliases)
+            or bool(classes & {"candidate_action", "a1_reveal", "a1_label"})
+        )
+        if a1_involved and occurred <= a0_seal:
+            return _block_error(
+                stage,
+                "EXPOSURE_WHOLE_BLOCK_A1_EARLY",
+                "no A1 authorization, delivery, access, or reveal may precede the full A0 barrier",
+                BLOCK_EXPOSURE_LOG_FILE,
+                "$[%d].occurred_at" % index,
+            )
+        stage_b_involved = (
+            actor in stage_b_aliases
+            or bool(recipients & stage_b_aliases)
+            or "stage_b_input" in classes
+        )
+        if stage_b_involved and occurred <= stage_b_time:
+            return _block_error(
+                stage,
+                "EXPOSURE_STAGE_B_EARLY",
+                "Stage B delivery/access must follow the full A1 barrier and explicit gate",
+                BLOCK_EXPOSURE_LOG_FILE,
+                "$[%d].occurred_at" % index,
+            )
+        if event["event_type"] == "block_a0_barrier_frozen" and occurred != a0_seal:
+            return _block_error(
+                stage,
+                "EXPOSURE_A0_BARRIER_TIME",
+                "A0 barrier ledger event must equal its physical seal time",
+                BLOCK_EXPOSURE_LOG_FILE,
+                "$[%d].occurred_at" % index,
+            )
+        if event["event_type"] == "block_a1_barrier_frozen" and occurred != a1_seal:
+            return _block_error(
+                stage,
+                "EXPOSURE_A1_BARRIER_TIME",
+                "A1 barrier ledger event must equal its physical seal time",
+                BLOCK_EXPOSURE_LOG_FILE,
+                "$[%d].occurred_at" % index,
+            )
+        if event["event_type"] == "stage_b_authorized" and occurred != stage_b_time:
+            return _block_error(
+                stage,
+                "EXPOSURE_STAGE_B_GATE_TIME",
+                "Stage-B authorization event must equal its physical gate time",
+                BLOCK_EXPOSURE_LOG_FILE,
+                "$[%d].occurred_at" % index,
+            )
+
+    def artifact_key(
+        artifact_class: str, artifact: Mapping[str, Any]
+    ) -> Tuple[str, str, str]:
+        return (
+            artifact_class,
+            artifact["artifact_id"],
+            canonical_sha256(artifact),
+        )
+
+    def event_visible_set(
+        event: Mapping[str, Any],
+    ) -> frozenset:
+        return frozenset(
+            (
+                item["artifact_class"],
+                item["artifact_ref"]["artifact_id"],
+                item["artifact_ref"]["sha256"],
+            )
+            for item in event["visible_artifacts"]
+        )
+
+    def contract_error(
+        message: str,
+        event_type: str,
+        index: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        return _block_error(
+            stage,
+            "EXPOSURE_EVENT_CONTRACT",
+            message,
+            BLOCK_EXPOSURE_LOG_FILE,
+            (
+                "$.%s" % event_type
+                if index is None
+                else "$[%d]" % index
+            ),
+        )
+
+    def verify_contracts(
+        event_type: str,
+        contracts: Sequence[Mapping[str, Any]],
+    ) -> Optional[Dict[str, Any]]:
+        actual = events_by_type.get(event_type, [])
+        if len(actual) != len(contracts):
+            return contract_error(
+                "%s multiplicity must equal the physical artifact roster"
+                % event_type,
+                event_type,
+            )
+        actual_by_visible: Dict[
+            frozenset, List[Tuple[int, Mapping[str, Any]]]
+        ] = {}
+        for index, event in actual:
+            actual_by_visible.setdefault(
+                event_visible_set(event), []
+            ).append((index, event))
+        expected_visible_sets = [
+            frozenset(contract["visible"]) for contract in contracts
+        ]
+        if (
+            len(expected_visible_sets) != len(set(expected_visible_sets))
+            or set(actual_by_visible) != set(expected_visible_sets)
+            or any(len(items) != 1 for items in actual_by_visible.values())
+        ):
+            return contract_error(
+                "%s must bind each exact event-local artifact set once"
+                % event_type,
+                event_type,
+            )
+        for contract in contracts:
+            visible = frozenset(contract["visible"])
+            index, event = actual_by_visible[visible][0]
+            recipients = set(event["recipient_aliases"])
+            if (
+                event["actor_role"] != contract["actor_role"]
+                or event["actor_alias"]
+                not in contract["actor_aliases"]
+                or event["exposure_operation"] != contract["operation"]
+                or recipients != contract["recipients"]
+            ):
+                return contract_error(
+                    "%s actor, role, operation, and recipients must match the event-local obligation"
+                    % event_type,
+                    event_type,
+                    index,
+                )
+            occurred = parse_timestamp(event["occurred_at"])
+            exact_time = contract.get("exact_time")
+            earliest = contract.get("earliest")
+            latest = contract.get("latest")
+            if (
+                exact_time is not None
+                and occurred != exact_time
+            ) or (
+                earliest is not None
+                and occurred < earliest
+            ) or (
+                latest is not None
+                and occurred > latest
+            ):
+                return contract_error(
+                    "%s timestamp must match its physical freeze/reveal interval"
+                    % event_type,
+                    event_type,
+                    index,
+                )
+        return None
+
+    coordinator_aliases = set(registry["coordinator_aliases"])
+    fixed_contract_groups: Sequence[
+        Tuple[str, Sequence[Mapping[str, Any]]]
+    ] = (
+        (
+            "block_frame_frozen",
+            [
+                {
+                    "visible": {
+                        artifact_key(
+                            "block_frame", fixed["block_frame"]
+                        )
+                    },
+                    "actor_role": "coordinator",
+                    "actor_aliases": coordinator_aliases,
+                    "operation": "freeze",
+                    "recipients": set(),
+                    "exact_time": parse_timestamp(
+                        fixed["block_frame"]["frozen_at"]
+                    ),
+                }
+            ],
+        ),
+        (
+            "location_manifest_frozen",
+            [
+                {
+                    "visible": {
+                        artifact_key(
+                            "location_manifest", manifest
+                        )
+                    },
+                    "actor_role": "coordinator",
+                    "actor_aliases": coordinator_aliases,
+                    "operation": "freeze",
+                    "recipients": set(),
+                    "exact_time": parse_timestamp(
+                        manifest["frozen_at"]
+                    ),
+                }
+            ],
+        ),
+        (
+            "block_a0_barrier_frozen",
+            [
+                {
+                    "visible": {
+                        artifact_key(
+                            "block_a0_barrier", a0_barrier
+                        )
+                    },
+                    "actor_role": "coordinator",
+                    "actor_aliases": {a0_barrier["sealed_by"]},
+                    "operation": "freeze",
+                    "recipients": set(),
+                    "exact_time": a0_seal,
+                }
+            ],
+        ),
+        (
+            "block_a1_barrier_frozen",
+            [
+                {
+                    "visible": {
+                        artifact_key(
+                            "block_a1_barrier", a1_barrier
+                        )
+                    },
+                    "actor_role": "coordinator",
+                    "actor_aliases": {a1_barrier["sealed_by"]},
+                    "operation": "freeze",
+                    "recipients": set(),
+                    "exact_time": a1_seal,
+                }
+            ],
+        ),
+        (
+            "stage_b_authorized",
+            [
+                {
+                    "visible": {
+                        artifact_key(
+                            "block_a1_barrier", a1_barrier
+                        )
+                    },
+                    "actor_role": "coordinator",
+                    "actor_aliases": {gate["authorized_by"]},
+                    "operation": "authorize",
+                    "recipients": set(),
+                    "exact_time": stage_b_time,
+                }
+            ],
+        ),
+    )
+    for event_type, contracts in fixed_contract_groups:
+        error = verify_contracts(event_type, contracts)
+        if error:
+            return error
+
+    a0_input_contracts: List[Dict[str, Any]] = []
+    a0_raw_contracts: List[Dict[str, Any]] = []
+    a0_adjudication_contracts: List[Dict[str, Any]] = []
+    for location in manifest["locations"]:
+        a0_input = _referenced_value(
+            loaded, "a0_input", location["a0_input_relative_path"]
+        )
+        submissions = _referenced_value(
+            loaded,
+            "block_a0_submissions",
+            location["a0_submissions_relative_path"],
+        )
+        adjudication = _referenced_value(
+            loaded,
+            "block_a0_adjudication",
+            location["a0_adjudication_container_relative_path"],
+        )
+        submission_aliases = {
+            item["annotator_alias"]
+            for item in submissions["submissions"]
+        }
+        a0_input_contracts.append(
+            {
+                "visible": {artifact_key("a0_input", a0_input)},
+                "actor_role": "coordinator",
+                "actor_aliases": coordinator_aliases,
+                "operation": "deliver",
+                "recipients": submission_aliases,
+                "earliest": parse_timestamp(a0_input["frozen_at"]),
+                "latest": min(
+                    parse_timestamp(item["frozen_at"])
+                    for item in submissions["submissions"]
+                ),
+            }
+        )
+        a0_raw_contracts.append(
+            {
+                "visible": {
+                    artifact_key("a0_raw_labels", submissions)
+                },
+                "actor_role": "a0_annotator",
+                "actor_aliases": submission_aliases,
+                "operation": "freeze",
+                "recipients": set(),
+                "exact_time": parse_timestamp(
+                    submissions["frozen_at"]
+                ),
+            }
+        )
+        adjudication_visible = {
+            artifact_key("a0_adjudication", adjudication)
+        }
+        for container_event in adjudication["events"]:
+            label = _referenced_value(
+                loaded,
+                "a0_label",
+                container_event["a0_label_relative_path"],
+            )
+            adjudication_visible.add(
+                artifact_key("a0_adjudication", label)
+            )
+            resolution = container_event["source_resolution"]
+            if resolution["status"] == "source_unidentifiable":
+                for search_ref in resolution["search_result_refs"]:
+                    search_result = _referenced_value(
+                        loaded,
+                        "source_search_result",
+                        search_ref["relative_path"],
+                    )
+                    adjudication_visible.add(
+                        artifact_key(
+                            "a0_adjudication", search_result
+                        )
+                    )
+        a0_adjudication_contracts.append(
+            {
+                "visible": adjudication_visible,
+                "actor_role": "a0_adjudicator",
+                "actor_aliases": {
+                    adjudication["adjudicator_alias"]
+                },
+                "operation": "freeze",
+                "recipients": set(),
+                "exact_time": parse_timestamp(
+                    adjudication["frozen_at"]
+                ),
+            }
+        )
+    for event_type, contracts in (
+        ("a0_input_released", a0_input_contracts),
+        ("a0_raw_labels_frozen", a0_raw_contracts),
+        ("a0_adjudication_frozen", a0_adjudication_contracts),
+    ):
+        error = verify_contracts(event_type, contracts)
+        if error:
+            return error
+
+    a1_reveal_contracts: List[Dict[str, Any]] = []
+    a1_label_contracts: List[Dict[str, Any]] = []
+    for freeze in a1_barrier["event_freezes"]:
+        reveal = _referenced_value(
+            loaded, "a1_reveal", freeze["a1_reveal_relative_path"]
+        )
+        label = _referenced_value(
+            loaded, "a1_label", freeze["a1_label_relative_path"]
+        )
+        a1_reveal_contracts.append(
+            {
+                "visible": {artifact_key("a1_reveal", reveal)},
+                "actor_role": "coordinator",
+                "actor_aliases": coordinator_aliases,
+                "operation": "deliver",
+                "recipients": {label["annotator_alias"]},
+                "exact_time": parse_timestamp(reveal["revealed_at"]),
+            }
+        )
+        a1_label_contracts.append(
+            {
+                "visible": {artifact_key("a1_label", label)},
+                "actor_role": "a1_annotator",
+                "actor_aliases": {label["annotator_alias"]},
+                "operation": "freeze",
+                "recipients": set(),
+                "exact_time": parse_timestamp(label["frozen_at"]),
+            }
+        )
+    for event_type, contracts in (
+        ("a1_revealed", a1_reveal_contracts),
+        ("a1_label_frozen", a1_label_contracts),
+    ):
+        error = verify_contracts(event_type, contracts)
+        if error:
+            return error
+
+    stage_b_records = events_by_type.get("stage_b_input_released", [])
+    if len(stage_b_records) != 1:
+        return contract_error(
+            "stage_b_input_released must occur exactly once",
+            "stage_b_input_released",
+        )
+    stage_b_index, stage_b_event = stage_b_records[0]
+    if (
+        stage_b_event["actor_alias"] != gate["authorized_by"]
+        or stage_b_event["actor_role"] != "coordinator"
+        or stage_b_event["exposure_operation"] != "deliver"
+        or set(stage_b_event["recipient_aliases"]) != stage_b_aliases
+        or len(stage_b_event["visible_artifacts"]) != 1
+        or stage_b_event["visible_artifacts"][0]["artifact_class"]
+        != "stage_b_input"
+    ):
+        return contract_error(
+            "Stage-B input must be delivered by its coordinator to the exact Stage-B pool",
+            "stage_b_input_released",
+            stage_b_index,
+        )
+
+    required_types = {
+        "block_frame_frozen",
+        "location_manifest_frozen",
+        "block_a0_barrier_frozen",
+        "block_a1_barrier_frozen",
+        "stage_b_authorized",
+        "stage_b_input_released",
+    }
+    if not required_types.issubset(seen_types):
+        return _block_error(
+            stage,
+            "EXPOSURE_REQUIRED_PHASE_EVENT_MISSING",
+            "delivery/access ledger omits a required whole-block phase",
+            BLOCK_EXPOSURE_LOG_FILE,
+        )
+
+    required_visible: Set[Tuple[str, str, str]] = {
+        (
+            "block_frame",
+            fixed["block_frame"]["artifact_id"],
+            canonical_sha256(fixed["block_frame"]),
+        ),
+        (
+            "location_manifest",
+            manifest["artifact_id"],
+            canonical_sha256(manifest),
+        ),
+        (
+            "block_a0_barrier",
+            a0_barrier["artifact_id"],
+            canonical_sha256(a0_barrier),
+        ),
+        (
+            "block_a1_barrier",
+            a1_barrier["artifact_id"],
+            canonical_sha256(a1_barrier),
+        ),
+    }
+    required_deliveries: Set[Tuple[str, str, str]] = set()
+    for location in manifest["locations"]:
+        a0_input = _referenced_value(
+            loaded, "a0_input", location["a0_input_relative_path"]
+        )
+        submissions = _referenced_value(
+            loaded,
+            "block_a0_submissions",
+            location["a0_submissions_relative_path"],
+        )
+        adjudication = _referenced_value(
+            loaded,
+            "block_a0_adjudication",
+            location["a0_adjudication_container_relative_path"],
+        )
+        required_visible.update(
+            {
+                (
+                    "a0_input",
+                    a0_input["artifact_id"],
+                    canonical_sha256(a0_input),
+                ),
+                (
+                    "a0_raw_labels",
+                    submissions["artifact_id"],
+                    canonical_sha256(submissions),
+                ),
+                (
+                    "a0_adjudication",
+                    adjudication["artifact_id"],
+                    canonical_sha256(adjudication),
+                ),
+            }
+        )
+        required_deliveries.add(
+            (
+                "a0_input",
+                a0_input["artifact_id"],
+                canonical_sha256(a0_input),
+            )
+        )
+        for container_event in adjudication["events"]:
+            a0_label = _referenced_value(
+                loaded,
+                "a0_label",
+                container_event["a0_label_relative_path"],
+            )
+            required_visible.add(
+                (
+                    "a0_adjudication",
+                    a0_label["artifact_id"],
+                    canonical_sha256(a0_label),
+                )
+            )
+            resolution = container_event["source_resolution"]
+            if resolution["status"] == "source_unidentifiable":
+                for search_ref in resolution["search_result_refs"]:
+                    search_result = _referenced_value(
+                        loaded,
+                        "source_search_result",
+                        search_ref["relative_path"],
+                    )
+                    required_visible.add(
+                        (
+                            "a0_adjudication",
+                            search_result["artifact_id"],
+                            canonical_sha256(search_result),
+                        )
+                    )
+    for freeze in a1_barrier["event_freezes"]:
+        reveal = _referenced_value(
+            loaded, "a1_reveal", freeze["a1_reveal_relative_path"]
+        )
+        label = _referenced_value(
+            loaded, "a1_label", freeze["a1_label_relative_path"]
+        )
+        reveal_key = (
+            "a1_reveal",
+            reveal["artifact_id"],
+            canonical_sha256(reveal),
+        )
+        required_visible.update(
+            {
+                reveal_key,
+                (
+                    "a1_label",
+                    label["artifact_id"],
+                    canonical_sha256(label),
+                ),
+            }
+        )
+        required_deliveries.add(reveal_key)
+    if not required_visible.issubset(visible_refs):
+        return _block_error(
+            stage,
+            "EXPOSURE_ARTIFACT_COVERAGE",
+            "complete ledger must cover every frame, location, A0, barrier, and A1 artifact",
+            BLOCK_EXPOSURE_LOG_FILE,
+        )
+    if not required_deliveries.issubset(delivered_refs):
+        return _block_error(
+            stage,
+            "EXPOSURE_DELIVERY_COVERAGE",
+            "complete ledger must record A0-input and A1-reveal deliveries",
+            BLOCK_EXPOSURE_LOG_FILE,
+        )
+
+    identity_values: Set[str] = set()
+    for coordinator in loaded["referenced"]["coordinator_envelope"].values():
+        identity_values.update(
+            value
+            for value in coordinator["identity"].values()
+            if isinstance(value, str)
+        )
+        identity_values.add(
+            coordinator["source_snapshot"]["source_detail_url"]
+        )
+    public_a0: List[Tuple[str, Mapping[str, Any]]] = []
+    for kind in (
+        "a0_input",
+        "block_a0_submissions",
+        "block_a0_adjudication",
+        "a0_label",
+        "source_search_result",
+    ):
+        public_a0.extend(loaded["referenced"].get(kind, {}).items())
+    for artifact_name, artifact in public_a0:
+        for path, obj in walk_objects(artifact):
+            forbidden = set(obj) & FORBIDDEN_PUBLIC_KEYS
+            if forbidden:
+                return _block_error(
+                    stage,
+                    "EXPOSURE_A0_FORBIDDEN_FIELD",
+                    "A0 artifact contains coordinator/action/outcome fields",
+                    artifact_name,
+                    path,
+                )
+        for path, text_value in walk_strings(artifact):
+            if text_value in identity_values or URL_OR_PATH_RE.search(
+                text_value
+            ):
+                return _block_error(
+                    stage,
+                    "EXPOSURE_A0_IDENTITY_VALUE_LEAK",
+                    "A0 artifact contains identity, URL, or local-path information",
+                    artifact_name,
+                    path,
+                )
+    return None
+
+
+def _full_block_authority_projection(
+    loaded: Mapping[str, Any],
+    source_categories: Mapping[str, str],
+) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
+    """Expose read-only roots and event-local refs for downstream validators."""
+
+    fixed = loaded["fixed"]
+    frame = fixed["block_frame"]
+    manifest = fixed["block_location_manifest"]
+    a0_barrier = fixed["block_barrier"]
+    a1_barrier = fixed["block_a1_barrier"]
+    stage_b_gate = fixed["stage_b_gate"]
+    role_history = fixed["role_history"]
+    scans = {
+        item["unit_alias"]: item for item in manifest["unit_scans"]
+    }
+    frame_units = {
+        item["unit_alias"]: item for item in frame["expected_units"]
+    }
+    a1_freezes = {
+        item["adjudicated_event_id"]: item
+        for item in a1_barrier["event_freezes"]
+    }
+    unit_stream_roots: List[Dict[str, Any]] = []
+    for unit_alias in utf8_sorted(scans):
+        scan = scans[unit_alias]
+        stream = _referenced_value(
+            loaded,
+            "block_stream_ledger",
+            scan["stream_ledger_relative_path"],
+        )
+        unit_stream_roots.append(
+            {
+                "unit_alias": unit_alias,
+                "prefix_commit_log_relative_path": scan[
+                    "prefix_commit_log_relative_path"
+                ],
+                "prefix_commit_log_sha256": scan[
+                    "prefix_commit_log_sha256"
+                ],
+                "prefix_chain_tip_sha256": scan[
+                    "prefix_chain_tip_sha256"
+                ],
+                "stream_ledger_relative_path": scan[
+                    "stream_ledger_relative_path"
+                ],
+                "stream_ledger_ref": scan["stream_ledger_ref"],
+                "raw_trajectory_relative_path": stream[
+                    "raw_trajectory_relative_path"
+                ],
+                "raw_trajectory_ref": stream["raw_trajectory_ref"],
+                "raw_parser": stream["raw_parser"],
+            }
+        )
+    roots = {
+        "block_frame": {
+            "relative_path": BLOCK_FRAME_FILE,
+            "artifact_ref": artifact_ref(frame),
+        },
+        "location_manifest": {
+            "relative_path": BLOCK_LOCATION_MANIFEST_FILE,
+            "artifact_ref": artifact_ref(manifest),
+        },
+        "block_a0_barrier": {
+            "relative_path": BLOCK_BARRIER_FILE,
+            "artifact_ref": artifact_ref(a0_barrier),
+        },
+        "block_a1_barrier": {
+            "relative_path": BLOCK_A1_BARRIER_FILE,
+            "artifact_ref": artifact_ref(a1_barrier),
+        },
+        "stage_b_gate": {
+            "relative_path": STAGE_B_GATE_FILE,
+            "artifact_ref": artifact_ref(stage_b_gate),
+        },
+        "role_history": {
+            "relative_path": ROLE_HISTORY_FILE,
+            "artifact_ref": artifact_ref(role_history),
+        },
+        "exposure_ledger": {
+            "relative_path": BLOCK_EXPOSURE_LOG_FILE,
+            "canonical_sha256": canonical_sha256(
+                fixed["block_exposure_events"]
+            ),
+            "chain_tip_sha256": stage_b_gate[
+                "exposure_chain_tip_sha256"
+            ],
+        },
+        "schema_bundle_sha256": schema_bundle_sha256(
+            loaded["schemas"]
+        ),
+        "validator_sha256": validator_file_sha256(),
+        "unit_stream_roots": unit_stream_roots,
+    }
+    events: List[Dict[str, Any]] = []
+    for location in manifest["locations"]:
+        unit_alias = location["unit_alias"]
+        scan = scans[unit_alias]
+        prefix_entries = _referenced_value(
+            loaded,
+            "prefix_commit",
+            scan["prefix_commit_log_relative_path"],
+        )
+        prefix = next(
+            item
+            for item in prefix_entries
+            if item["boundary_location_id"]
+            == location["boundary_location_id"]
+        )
+        stream = _referenced_value(
+            loaded,
+            "block_stream_ledger",
+            scan["stream_ledger_relative_path"],
+        )
+        action = stream["entries"][prefix["observation_ordinal"]][
+            "current_action"
+        ]
+        adjudication = _referenced_value(
+            loaded,
+            "block_a0_adjudication",
+            location["a0_adjudication_container_relative_path"],
+        )
+        for container_event in adjudication["events"]:
+            event_id = container_event["adjudicated_event_id"]
+            freeze = a1_freezes[event_id]
+            frame_unit = frame_units[unit_alias]
+            key_preimage = [
+                frame_unit["task_id"],
+                unit_alias,
+                location["boundary_location_id"],
+                event_id,
+            ]
+            events.append(
+                {
+                    "event_key_serialization": "stage0f-canonical-event-key-v1",
+                    "event_key_preimage": key_preimage,
+                    "event_key_sha256": canonical_sha256(
+                        [
+                            "stage0f-canonical-event-key-v1",
+                            *key_preimage,
+                        ]
+                    ),
+                    "task_id": frame_unit["task_id"],
+                    "hosted_config_id": frame_unit[
+                        "hosted_config_id"
+                    ],
+                    "unit_alias": unit_alias,
+                    "boundary_location_id": location[
+                        "boundary_location_id"
+                    ],
+                    "adjudicated_event_id": event_id,
+                    "observation_ordinal": prefix[
+                        "observation_ordinal"
+                    ],
+                    "stream_ledger_ref": scan["stream_ledger_ref"],
+                    "stream_ledger_relative_path": scan[
+                        "stream_ledger_relative_path"
+                    ],
+                    "stream_action_sha256": (
+                        action["action_bytes_sha256"]
+                        if action["kind"] == "current_action"
+                        else None
+                    ),
+                    "a0_input_ref": location["a0_input_ref"],
+                    "a0_input_relative_path": location[
+                        "a0_input_relative_path"
+                    ],
+                    "a0_adjudication_container_ref": location[
+                        "a0_adjudication_container_ref"
+                    ],
+                    "a0_adjudication_container_relative_path": location[
+                        "a0_adjudication_container_relative_path"
+                    ],
+                    "a0_label_ref": container_event[
+                        "a0_label_ref"
+                    ],
+                    "a0_label_relative_path": container_event[
+                        "a0_label_relative_path"
+                    ],
+                    "source_category": source_categories[event_id],
+                    "a1_reveal_ref": freeze["a1_reveal_ref"],
+                    "a1_reveal_relative_path": freeze[
+                        "a1_reveal_relative_path"
+                    ],
+                    "a1_label_ref": freeze["a1_label_ref"],
+                    "a1_label_relative_path": freeze[
+                        "a1_label_relative_path"
+                    ],
+                }
+            )
+    events.sort(
+        key=lambda item: (
+            item["task_id"].encode("utf-8"),
+            item["hosted_config_id"].encode("utf-8"),
+            item["unit_alias"].encode("utf-8"),
+            item["observation_ordinal"],
+            item["adjudicated_event_id"].encode("utf-8"),
+        )
+    )
+    return roots, events
+
+
+def _decorate_full_block_result(
+    result: Dict[str, Any],
+    loaded: Optional[Mapping[str, Any]] = None,
+    source_categories: Optional[Mapping[str, str]] = None,
+) -> Dict[str, Any]:
+    result["scope"] = "full_block"
+    result["mechanical_claim"] = "STRUCTURAL_VALIDATION_ONLY"
+    result["scientific_gate"] = "NOT_EVALUATED"
+    result["claim_ceiling"] = "NO_BLOCK_A"
+    result["production_authority"] = "UNAVAILABLE_FAIL_CLOSED"
+    result["identity_independence"] = "ALIAS_LEVEL_ONLY"
+    result["temporal_evidence"] = "SELF_SEALED_SYNTAX_ONLY"
+    result["exposure_evidence"] = "SELF_REPORTED_LEDGER_SYNTAX_ONLY"
+    result["validator_sha256"] = validator_file_sha256()
+    if loaded is None:
+        result["frame_sha256"] = None
+        result["manifest_sha256"] = None
+        result["a0_barrier_sha256"] = None
+        result["a1_barrier_sha256"] = None
+        result["block_scope"] = None
+        result["derived_source_categories"] = {}
+        result["authority_roots"] = {}
+        result["canonical_adjudicated_events"] = []
+        return result
+    fixed = loaded["fixed"]
+    result["frame_sha256"] = canonical_sha256(fixed["block_frame"])
+    result["manifest_sha256"] = canonical_sha256(
+        fixed["block_location_manifest"]
+    )
+    result["a0_barrier_sha256"] = canonical_sha256(
+        fixed["block_barrier"]
+    )
+    result["a1_barrier_sha256"] = canonical_sha256(
+        fixed["block_a1_barrier"]
+    )
+    result["block_scope"] = fixed["block_frame"]["block_scope"]
+    result["derived_source_categories"] = (
+        dict(source_categories or {}) if result.get("valid") else {}
+    )
+    if result.get("valid"):
+        (
+            result["authority_roots"],
+            result["canonical_adjudicated_events"],
+        ) = _full_block_authority_projection(
+            loaded, result["derived_source_categories"]
+        )
+    else:
+        result["authority_roots"] = {}
+        result["canonical_adjudicated_events"] = []
+    result["bundle_sha256"] = canonical_sha256(
+        [
+            "stage0f-full-block-bundle-v1",
+            result["frame_sha256"],
+            result["manifest_sha256"],
+            result["a0_barrier_sha256"],
+            result["a1_barrier_sha256"],
+            canonical_sha256(fixed["stage_b_gate"]),
+            fixed["stage_b_gate"]["exposure_chain_tip_sha256"],
+            result["validator_sha256"],
+        ]
+    )
+    return result
+
+
+def validate_full_block(
+    block_dir: Path,
+    schema_dir: Path,
+    expected_frame_sha256: Optional[str],
+) -> Dict[str, Any]:
+    """The sole full-block entry that can mechanically PASS.
+
+    PASS is structural only: it is not Step-1 GO, does not establish UACF-D
+    burden, and does not authorize a real Block-A run.  The real production
+    scope currently fails closed on missing external execution authorities.
+    """
+
+    if (
+        expected_frame_sha256 is None
+        or re.fullmatch(r"(?!0{64})[0-9a-f]{64}", expected_frame_sha256)
+        is None
+    ):
+        return _decorate_full_block_result(
+            verdict(
+                False,
+                [
+                    _block_error(
+                        STAGE_ORDER[3],
+                        "FRAME_COMMITMENT_REQUIRED",
+                        "full-block validation requires an external nonzero SHA-256 frame commitment",
+                        BLOCK_FRAME_FILE,
+                    )
+                ],
+                [],
+            )
+        )
+    loaded, errors = load_full_block(block_dir, schema_dir)
     if errors:
-        return verdict(False, errors, completed)
+        return _decorate_full_block_result(verdict(False, errors, []))
+    assert loaded is not None
+    completed = [STAGE_ORDER[0]]
+    if JSONSCHEMA_IMPORT_ERROR is not None:
+        return _decorate_full_block_result(
+            verdict(
+                False,
+                [
+                    _block_error(
+                        STAGE_ORDER[1],
+                        "DEPENDENCY_JSONSCHEMA_UNAVAILABLE",
+                        "Install exact requirements-stage0f.txt; no Draft 2020-12 fallback is permitted: %s"
+                        % JSONSCHEMA_IMPORT_ERROR,
+                    )
+                ],
+                completed,
+            ),
+            loaded,
+        )
+    errors = validate_schema_meta(loaded["schemas"])
+    if errors:
+        return _decorate_full_block_result(
+            verdict(False, errors, completed), loaded
+        )
+    completed.append(STAGE_ORDER[1])
+    errors = validate_full_block_instances(loaded)
+    if errors:
+        return _decorate_full_block_result(
+            verdict(False, errors, completed), loaded
+        )
     completed.append(STAGE_ORDER[2])
+    semantic_error, source_categories = first_full_block_semantic_error(
+        loaded
+    )
+    if semantic_error:
+        return _decorate_full_block_result(
+            verdict(False, [semantic_error], completed),
+            loaded,
+            source_categories,
+        )
+    completed.append(STAGE_ORDER[3])
+    hash_error = first_full_block_hash_error(
+        loaded, expected_frame_sha256
+    )
+    if hash_error:
+        return _decorate_full_block_result(
+            verdict(False, [hash_error], completed),
+            loaded,
+            source_categories,
+        )
+    completed.append(STAGE_ORDER[4])
+    exposure_error = first_full_block_exposure_error(loaded)
+    if exposure_error:
+        return _decorate_full_block_result(
+            verdict(False, [exposure_error], completed),
+            loaded,
+            source_categories,
+        )
+    completed.append(STAGE_ORDER[5])
+    return _decorate_full_block_result(
+        verdict(True, [], completed),
+        loaded,
+        source_categories,
+    )
+
+
+def validate_block_bundle(
+    block_dir: Path,
+    schema_dir: Path,
+) -> Dict[str, Any]:
+    """Legacy block entry: cannot bypass the external-frame API."""
+
     return verdict(
         False,
         [
-            make_error(
+            _block_error(
                 STAGE_ORDER[3],
-                "SEM_BLOCK_BARRIER_LEDGER_NOT_IMPLEMENTED",
-                "NOT_READY: full block location manifest, all A0 raw labels, A0-only adjudications, multiple same-location events, permanent A0/A1/StageB actor separation, and block-wide leak invalidation are required before any A1",
-                BLOCK_BARRIER_FILE,
+                "FULL_BLOCK_REQUIRED",
+                "legacy block entry can never PASS; call validate_full_block with the external frame commitment",
+                str(block_dir),
             )
         ],
-        completed,
+        [],
     )
 
 
@@ -2966,11 +6386,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         type=Path,
         default=Path(__file__).resolve().parents[1] / "schemas",
     )
+    parser.add_argument(
+        "--expected-frame-sha256",
+        help="external frozen full-block frame commitment",
+    )
     parser.add_argument("--pretty", action="store_true")
     args = parser.parse_args(argv)
 
     if (args.bundle_dir / BLOCK_BARRIER_FILE).is_file():
-        result = validate_block_bundle(args.bundle_dir, args.schema_dir)
+        result = validate_full_block(
+            args.bundle_dir,
+            args.schema_dir,
+            args.expected_frame_sha256,
+        )
     else:
         result = validate_bundle(args.bundle_dir, args.schema_dir)
     print(

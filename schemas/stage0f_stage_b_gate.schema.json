@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_stage_b_gate.schema.json",
+  "title": "Stage 0F Stage-B authorization after the full A1 barrier",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "canonicalization",
+    "artifact_id",
+    "block_id",
+    "block_scope",
+    "block_a1_barrier_ref",
+    "exposure_ledger_id",
+    "exposure_ledger_complete",
+    "exposure_event_count",
+    "exposure_chain_tip_sha256",
+    "authorized_by",
+    "authorized_at",
+    "ledger_closed_at"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "stage_b_gate"
+    },
+    "schema_version": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/schema_version"
+    },
+    "canonicalization": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/canonicalization"
+    },
+    "artifact_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
+    },
+    "block_id": {
+      "type": "string",
+      "pattern": "^BLOCK-[A-Z0-9-]+$"
+    },
+    "block_scope": {
+      "enum": [
+        "ontology_block_a",
+        "ontology_block_b",
+        "ontology_block_c",
+        "confirmatory_holdout",
+        "synthetic_test_only"
+      ]
+    },
+    "block_a1_barrier_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "exposure_ledger_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
+    },
+    "exposure_ledger_complete": {
+      "const": true
+    },
+    "exposure_event_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "exposure_chain_tip_sha256": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "authorized_by": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/opaque_id"
+    },
+    "authorized_at": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+    },
+    "ledger_closed_at": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+    }
+  }
+}

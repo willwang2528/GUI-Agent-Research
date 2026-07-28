@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_role_history.schema.json",
+  "title": "Stage 0F permanent cross-block role history",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "canonicalization",
+    "artifact_id",
+    "history_source_ref",
+    "assignments",
+    "complete_through",
+    "frozen_at"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "role_history"
+    },
+    "schema_version": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/schema_version"
+    },
+    "canonicalization": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/canonicalization"
+    },
+    "artifact_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
+    },
+    "history_source_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "assignments": {
+      "type": "array",
+      "minItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "actor_alias",
+          "role",
+          "first_block_id",
+          "effective_from",
+          "permanent"
+        ],
+        "properties": {
+          "actor_alias": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/opaque_id"
+          },
+          "role": {
+            "enum": [
+              "a0_annotator",
+              "a0_adjudicator",
+              "a1_annotator",
+              "stage_b_annotator",
+              "coordinator",
+              "candidate_generator",
+              "reference"
+            ]
+          },
+          "first_block_id": {
+            "type": "string",
+            "pattern": "^BLOCK-[A-Z0-9-]+$"
+          },
+          "effective_from": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+          },
+          "permanent": {
+            "const": true
+          }
+        }
+      }
+    },
+    "complete_through": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+    },
+    "frozen_at": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+    }
+  }
+}

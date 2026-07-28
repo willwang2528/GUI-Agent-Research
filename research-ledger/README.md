@@ -4,9 +4,9 @@
 > initialized: `2026-07-28`  
 > git_policy: `GitHub main / selected research artifacts only`  
 > git_repository: `https://github.com/willwang2528/GUI-Agent-Research`  
-> git_repository_status: `ACTIVE — checkpoint history is recorded by commits on main`  
+> git_repository_status: `CURRENT CHECKPOINT PREPARED FOR MAIN; use the newest Git commit containing research-ledger/checkpoints/2026-07-28T123302+0800-step1-round5-checkpoint.md`  
 > current_step: `Step 1`  
-> current_verdict: `IN PROGRESS / NOT READY FOR BLOCK-A DRY RUN`
+> current_verdict: `IN PROGRESS / SYNTHETIC MECHANICS PARTIALLY ACCEPTED / PRODUCTION MEASUREMENT NOT READY`
 
 本目录是七步研究链的长期入口。GitHub `main` 上的 commit 记录每个关键节点；这里记录“当时能得出什么结论、不能得出什么结论以及下一门是什么”。原始大文件不进入 Git，使用 `source_provenance/` 中的 hash manifest 追溯。台账文件存在或被提交不等于相应科学命题已经得到证明。
 
@@ -41,3 +41,5 @@
 - `05-environment-falsification.md`
 - `06-budget-and-privilege-audit.md`
 - `07-go-no-go-and-publication-claim.md`
+- `CURRENT_GOAL_STATE.json`
+- `checkpoints/2026-07-28T123302+0800-step1-round5-checkpoint.md`

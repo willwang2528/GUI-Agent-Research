@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_block_a1_barrier.schema.json",
+  "title": "Stage 0F full-block A1 completion barrier",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "canonicalization",
+    "artifact_id",
+    "block_id",
+    "block_scope",
+    "block_a0_barrier_ref",
+    "location_manifest_ref",
+    "expected_adjudicated_event_count",
+    "event_freezes",
+    "sealed_by",
+    "sealed_at"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "block_a1_barrier"
+    },
+    "schema_version": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/schema_version"
+    },
+    "canonicalization": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/canonicalization"
+    },
+    "artifact_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
+    },
+    "block_id": {
+      "type": "string",
+      "pattern": "^BLOCK-[A-Z0-9-]+$"
+    },
+    "block_scope": {
+      "enum": [
+        "ontology_block_a",
+        "ontology_block_b",
+        "ontology_block_c",
+        "confirmatory_holdout",
+        "synthetic_test_only"
+      ]
+    },
+    "block_a0_barrier_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "location_manifest_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "expected_adjudicated_event_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "event_freezes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "unit_alias",
+          "boundary_location_id",
+          "adjudicated_event_id",
+          "a1_reveal_ref",
+          "a1_reveal_relative_path",
+          "a1_label_ref",
+          "a1_label_relative_path",
+          "reveal_atomicity",
+          "a1_label_frozen_at"
+        ],
+        "properties": {
+          "unit_alias": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/unit_alias"
+          },
+          "boundary_location_id": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+          },
+          "adjudicated_event_id": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+          },
+          "a1_reveal_ref": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+          },
+          "a1_reveal_relative_path": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/relative_path"
+          },
+          "a1_label_ref": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+          },
+          "a1_label_relative_path": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/relative_path"
+          },
+          "omission_interval_ref": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+          },
+          "omission_interval_relative_path": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/relative_path"
+          },
+          "reveal_atomicity": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "trajectory_mode",
+                  "action_unit",
+                  "stream_observation_ordinal",
+                  "stream_action_sha256",
+                  "entire_action_unit_revealed_at"
+                ],
+                "properties": {
+                  "trajectory_mode": {
+                    "const": "standard_steps"
+                  },
+                  "action_unit": {
+                    "const": "single_action"
+                  },
+                  "stream_observation_ordinal": {
+                    "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/observation_ordinal"
+                  },
+                  "stream_action_sha256": {
+                    "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+                  },
+                  "entire_action_unit_revealed_at": {
+                    "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "trajectory_mode",
+                  "action_unit",
+                  "batch_bundle_id",
+                  "bundle_first_action_ordinal",
+                  "bundle_last_action_ordinal",
+                  "stream_observation_ordinal",
+                  "stream_action_sha256",
+                  "entire_action_unit_revealed_at"
+                ],
+                "properties": {
+                  "trajectory_mode": {
+                    "const": "batch_tool_model_steps"
+                  },
+                  "action_unit": {
+                    "const": "batch_bundle"
+                  },
+                  "batch_bundle_id": {
+                    "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/opaque_id"
+                  },
+                  "bundle_first_action_ordinal": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "bundle_last_action_ordinal": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "stream_observation_ordinal": {
+                    "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/observation_ordinal"
+                  },
+                  "stream_action_sha256": {
+                    "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+                  },
+                  "entire_action_unit_revealed_at": {
+                    "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+                  }
+                }
+              }
+            ]
+          },
+          "a1_label_frozen_at": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+          }
+        }
+        ,
+        "dependentRequired": {
+          "omission_interval_ref": [
+            "omission_interval_relative_path"
+          ],
+          "omission_interval_relative_path": [
+            "omission_interval_ref"
+          ]
+        }
+      }
+    },
+    "sealed_by": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/opaque_id"
+    },
+    "sealed_at": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+    }
+  }
+}
