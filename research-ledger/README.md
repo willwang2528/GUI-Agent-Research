@@ -4,7 +4,7 @@
 > initialized: `2026-07-28`  
 > git_policy: `GitHub main / selected research artifacts only`  
 > git_repository: `https://github.com/willwang2528/GUI-Agent-Research`  
-> git_repository_status: `PUSH NOT EXECUTED — local content commit 00ce947 exists; approval service failed before git push; recorded origin/main 4bbc0a3 may be stale`  
+> git_repository_status: `ROUND 9 WIP PREPARED FOR AUTHORIZED PUSH; verify origin/main before treating it as remote-backed`  
 > current_step: `Step 1`  
 > current_verdict: `IN PROGRESS / SYNTHETIC MECHANICS PARTIALLY ACCEPTED / PRODUCTION MEASUREMENT NOT READY`
 
@@ -42,4 +42,5 @@
 - `06-budget-and-privilege-audit.md`
 - `07-go-no-go-and-publication-claim.md`
 - `CURRENT_GOAL_STATE.json`
-- `checkpoints/2026-07-28T123302+0800-step1-round5-checkpoint.md`
+- `checkpoints/2026-07-28T155000+0800-step1-round9-wip-checkpoint.md`
+- `../refine-logs/round-9-identity-mechanics-redteam-wip.md`

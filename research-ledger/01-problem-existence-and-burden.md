@@ -26,6 +26,7 @@
 | 2026-07-28 | Round 7 Stage A v2 battle | 94/94 Stage A、104/104 组合回归、28/28 strict schemas；独立 reviewer 发现并复核 R11 singleton unresolved 修复 | 只接受指定 synthetic R/C/P/E/M mechanics；无 frozen case matcher、human dual-entailment 与 external raw/time/access/role authority，协议仍 `REVISE` |
 | 2026-07-28 | Round 7 local archived-source battle | 22/22 tests；48 local HTML pages、47 replay、1 no-step、9,138 literal steps；独立复算 hash 与 real receipt | 只证明 `LOCAL_ARCHIVED_BYTES_LITERAL_PROJECTION_VERIFIED`；manifest 是 self-sealed，source origin、trusted capture time、observation assets 与 production authority 未证明 |
 | 2026-07-28 | Round 8 matcher identifiability battle | greedy 反例使 agreement 由 0.5 变 1.0；K2,2 两个 maximum matchings 使 exact agreement 由 2 变 0；split/merge 改变 event denominator；三方四轮审计 | 证明 case correspondence/atomicity 是潜变量，不能由 maximum matching 或 deterministic tie-break 恢复；partial-identification spec 仅获窄接受，matcher freeze、reliability、Block A 与 Step 1 继续拒绝 |
+| 2026-07-28 | Round 9 identity mechanics executable battle（WIP） | 初版 35/35 被 committed-slot omission、extra artifact、symlink、chronology、same-channel、version、typed-invalid、slot grinding 与 allowed-projection laundering 等真实攻击推翻；repair 后当前 15 pass、20 errors | 单 artifact 不能证明 blindness；需要两个完整有效 traces 上的条件 2-safety。当前实现处于测试红灯，L2、measurement freeze、Block A 与 Step 1 全部未获准 |
 
 ## 当前第一性结论
 

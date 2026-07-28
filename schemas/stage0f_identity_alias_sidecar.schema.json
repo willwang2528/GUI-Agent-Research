@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_identity_alias_sidecar.schema.json",
+  "title": "Stage 0F coordinator-only packet alias sidecar",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "canonicalization",
+    "artifact_id",
+    "visibility",
+    "sidecar_id",
+    "identity_stack_manifest_ref",
+    "a0_input_ref",
+    "unit_alias",
+    "boundary_location_id",
+    "session_slot_id",
+    "alias_key_hex",
+    "alias_nonce_hex",
+    "alias_key_commitment_sha256",
+    "entropy_authority",
+    "key_draw_count",
+    "retry_count",
+    "real_pair_id",
+    "pair_alias",
+    "packet_alias",
+    "context_alias",
+    "left_binding",
+    "right_binding",
+    "raw_verification_receipt_refs",
+    "redaction_policy_sha256",
+    "redactor_executable_sha256"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "identity_alias_redaction_sidecar"
+    },
+    "schema_version": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/schema_version"
+    },
+    "canonicalization": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/canonicalization"
+    },
+    "artifact_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
+    },
+    "visibility": {
+      "const": "coordinator_only_never_reviewer_visible"
+    },
+    "sidecar_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "identity_stack_manifest_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "a0_input_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "unit_alias": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/unit_alias"
+    },
+    "boundary_location_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "session_slot_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "alias_key_hex": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "alias_nonce_hex": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "alias_key_commitment_sha256": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "entropy_authority": {
+      "enum": [
+        "local_csprng_unattested",
+        "external_commit_then_beacon_verified"
+      ]
+    },
+    "key_draw_count": {
+      "const": 1
+    },
+    "retry_count": {
+      "const": 0
+    },
+    "real_pair_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "pair_alias": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "packet_alias": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "context_alias": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "left_binding": {
+      "$ref": "#/$defs/view_binding"
+    },
+    "right_binding": {
+      "$ref": "#/$defs/view_binding"
+    },
+    "raw_verification_receipt_refs": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+      }
+    },
+    "redaction_policy_sha256": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "redactor_executable_sha256": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    }
+  },
+  "$defs": {
+    "view_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "submission_session_ref",
+        "submission_slot_id",
+        "raw_envelope_ref",
+        "view_alias",
+        "evidence_aliases"
+      ],
+      "properties": {
+        "submission_session_ref": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+        },
+        "submission_slot_id": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+        },
+        "raw_envelope_ref": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+        },
+        "view_alias": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+        },
+        "evidence_aliases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "evidence_index",
+              "evidence_alias"
+            ],
+            "properties": {
+              "evidence_index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "evidence_alias": {
+                "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

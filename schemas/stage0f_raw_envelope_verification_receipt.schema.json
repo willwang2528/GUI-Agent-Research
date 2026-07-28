@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_raw_envelope_verification_receipt.schema.json",
+  "title": "Stage 0F standalone raw-envelope mechanics receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "canonicalization",
+    "artifact_id",
+    "receipt_id",
+    "identity_stack_manifest_ref",
+    "submission_session_ref",
+    "submission_slot_id",
+    "raw_envelope_ref",
+    "raw_source_sha256",
+    "verifier_executable_sha256",
+    "checks",
+    "authority",
+    "verified_at"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "raw_envelope_verification_receipt"
+    },
+    "schema_version": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/schema_version"
+    },
+    "canonicalization": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/canonicalization"
+    },
+    "artifact_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
+    },
+    "receipt_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "identity_stack_manifest_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "submission_session_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "submission_slot_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "raw_envelope_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "raw_source_sha256": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "verifier_executable_sha256": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "RAW_BYTES_HASH_LENGTH_PASS",
+          "RAW_DUPLICATE_KEY_PARSE_PASS",
+          "RAW_TYPED_PROJECTION_REPLAY_PASS",
+          "RAW_IDENTITY_EVIDENCE_BINDING_PASS",
+          "RAW_SELECTOR_INTERVAL_CUTOFF_PASS",
+          "RAW_STATEMENT_HASH_PASS",
+          "RAW_SLOT_SESSION_BINDING_PASS",
+          "RAW_ENVELOPE_ID_PASS"
+        ]
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw_byte_parse_binding",
+        "slot_ordering",
+        "identity_evidence_provenance",
+        "external_roster_authority"
+      ],
+      "properties": {
+        "raw_byte_parse_binding": {
+          "const": "verified_local_executable"
+        },
+        "slot_ordering": {
+          "enum": [
+            "self_reported_local_order_only",
+            "external_append_only_order_verified"
+          ]
+        },
+        "identity_evidence_provenance": {
+          "enum": [
+            "partial_annotator_selected",
+            "verified_independent_selector"
+          ]
+        },
+        "external_roster_authority": {
+          "enum": [
+            "not_established",
+            "verified"
+          ]
+        }
+      }
+    },
+    "verified_at": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+    }
+  }
+}

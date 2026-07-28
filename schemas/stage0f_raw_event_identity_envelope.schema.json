@@ -9,14 +9,17 @@
     "schema_version",
     "canonicalization",
     "artifact_id",
+    "identity_stack_manifest_ref",
     "unit_alias",
     "boundary_location_id",
     "a0_input_ref",
-    "submission_slot_commitment_ref",
+    "submission_session_ref",
+    "submission_slot_id",
     "annotator_alias",
     "annotator_principal_commitment_sha256",
     "raw_envelope_id",
     "raw_source",
+    "parser_contract",
     "parse_status",
     "parse_errors",
     "typed_projection",
@@ -37,6 +40,9 @@
     "artifact_id": {
       "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
     },
+    "identity_stack_manifest_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
     "unit_alias": {
       "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/unit_alias"
     },
@@ -46,8 +52,11 @@
     "a0_input_ref": {
       "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
     },
-    "submission_slot_commitment_ref": {
+    "submission_session_ref": {
       "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "submission_slot_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
     },
     "annotator_alias": {
       "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/opaque_id"
@@ -80,6 +89,26 @@
         "byte_length": {
           "type": "integer",
           "minimum": 1
+        }
+      }
+    },
+    "parser_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "parser_id",
+        "parser_executable_sha256",
+        "projection_id"
+      ],
+      "properties": {
+        "parser_id": {
+          "const": "stage0f-raw-identity-json-parser-v1"
+        },
+        "parser_executable_sha256": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+        },
+        "projection_id": {
+          "const": "typed-projection-plus-identity-evidence-v1"
         }
       }
     },

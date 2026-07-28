@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_identity_submission_session.schema.json",
+  "title": "Stage 0F standalone identity submission session and slot seals",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "canonicalization",
+    "artifact_id",
+    "identity_stack_manifest_ref",
+    "unit_alias",
+    "boundary_location_id",
+    "a0_input_ref",
+    "side",
+    "session_id",
+    "annotator_alias",
+    "annotator_principal_commitment_sha256",
+    "append_only_channel_id",
+    "session_sequence",
+    "reserved_at",
+    "slots",
+    "closed_at",
+    "complete_search_attestation",
+    "chain_tip_sha256"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "identity_submission_session"
+    },
+    "schema_version": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/schema_version"
+    },
+    "canonicalization": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/canonicalization"
+    },
+    "artifact_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
+    },
+    "identity_stack_manifest_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "unit_alias": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/unit_alias"
+    },
+    "boundary_location_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "a0_input_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "side": {
+      "enum": [
+        "left",
+        "right"
+      ]
+    },
+    "session_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "annotator_alias": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/opaque_id"
+    },
+    "annotator_principal_commitment_sha256": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "append_only_channel_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/opaque_id"
+    },
+    "session_sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "reserved_at": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+    },
+    "slots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "slot_ordinal",
+          "slot_id",
+          "reserved_at",
+          "sealed_source",
+          "sealed_at",
+          "previous_slot_entry_sha256",
+          "slot_entry_sha256"
+        ],
+        "properties": {
+          "slot_ordinal": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "slot_id": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+          },
+          "reserved_at": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+          },
+          "sealed_source": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "relative_path",
+              "content_sha256",
+              "byte_length"
+            ],
+            "properties": {
+              "relative_path": {
+                "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/relative_path"
+              },
+              "content_sha256": {
+                "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+              },
+              "byte_length": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          },
+          "sealed_at": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+          },
+          "previous_slot_entry_sha256": {
+            "oneOf": [
+              {
+                "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "slot_entry_sha256": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+          }
+        }
+      }
+    },
+    "closed_at": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+    },
+    "complete_search_attestation": {
+      "const": "self_reported_complete_search_only"
+    },
+    "chain_tip_sha256": {
+      "oneOf": [
+        {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

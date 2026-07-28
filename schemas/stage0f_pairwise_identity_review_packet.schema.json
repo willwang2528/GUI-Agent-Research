@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://gui-agent-memory.local/schemas/stage0f_pairwise_identity_review_packet.schema.json",
-  "title": "Stage 0F estimand-blind pairwise identity review packet draft",
+  "title": "Stage 0F packet-local conditional identity-review packet draft",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -9,14 +9,13 @@
     "schema_version",
     "canonicalization",
     "artifact_id",
-    "pair_id",
-    "unit_alias",
-    "boundary_location_id",
-    "reviewer_visible_a0_input_ref",
+    "packet_alias",
+    "pair_alias",
+    "context_alias",
+    "review_protocol_id",
+    "redaction_policy_id",
     "left_identity_view",
-    "right_identity_view",
-    "redaction_contract",
-    "frozen_at"
+    "right_identity_view"
   ],
   "properties": {
     "artifact_type": {
@@ -29,72 +28,29 @@
       "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/canonicalization"
     },
     "artifact_id": {
-      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
+      "type": "string",
+      "pattern": "^identity-packet-[0-9a-f]{64}$"
     },
-    "pair_id": {
+    "packet_alias": {
       "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
     },
-    "unit_alias": {
-      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/unit_alias"
-    },
-    "boundary_location_id": {
+    "pair_alias": {
       "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
     },
-    "reviewer_visible_a0_input_ref": {
-      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    "context_alias": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "review_protocol_id": {
+      "const": "stage0f-isolated-pairwise-identity-review-v1"
+    },
+    "redaction_policy_id": {
+      "const": "stage0f-conditional-identity-redaction-v2"
     },
     "left_identity_view": {
       "$ref": "#/$defs/identity_view"
     },
     "right_identity_view": {
       "$ref": "#/$defs/identity_view"
-    },
-    "redaction_contract": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "policy_id",
-        "policy_sha256",
-        "executable_sha256",
-        "input_pair_projection_sha256",
-        "output_packet_projection_sha256",
-        "forbidden_field_names"
-      ],
-      "properties": {
-        "policy_id": {
-          "const": "stage0f-estimand-blind-identity-redaction-v1"
-        },
-        "policy_sha256": {
-          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
-        },
-        "executable_sha256": {
-          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
-        },
-        "input_pair_projection_sha256": {
-          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
-        },
-        "output_packet_projection_sha256": {
-          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
-        },
-        "forbidden_field_names": {
-          "const": [
-            "affected_obligation_ids",
-            "boundary_type",
-            "candidate_action",
-            "normative_action_difference",
-            "outcome",
-            "p_new_proposition_id",
-            "p_old_proposition_id",
-            "raw_source",
-            "target_state_variable_claims",
-            "typed_projection",
-            "update_source_labels"
-          ]
-        }
-      }
-    },
-    "frozen_at": {
-      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
     }
   },
   "$defs": {
@@ -102,38 +58,70 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "raw_envelope_ref",
-        "evidence_atoms",
+        "view_alias",
+        "evidence_presentations",
         "temporal_interval",
-        "atomicity_evidence_refs"
+        "atomicity_question_id"
       ],
       "properties": {
-        "raw_envelope_ref": {
-          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+        "view_alias": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
         },
-        "evidence_atoms": {
+        "evidence_presentations": {
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": false,
             "required": [
-              "artifact_id",
-              "observation_ordinal",
-              "content_sha256",
-              "selector"
+              "evidence_alias",
+              "source_observation_ordinal",
+              "rendition"
             ],
             "properties": {
-              "artifact_id": {
-                "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
-              },
-              "observation_ordinal": {
-                "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/observation_ordinal"
-              },
-              "content_sha256": {
+              "evidence_alias": {
                 "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
               },
-              "selector": {
-                "$ref": "https://gui-agent-memory.local/schemas/stage0f_raw_event_identity_envelope.schema.json#/$defs/selector"
+              "source_observation_ordinal": {
+                "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/observation_ordinal"
+              },
+              "rendition": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rendition_type",
+                      "text"
+                    ],
+                    "properties": {
+                      "rendition_type": {
+                        "const": "utf8_text"
+                      },
+                      "text": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "rendition_type",
+                      "reason"
+                    ],
+                    "properties": {
+                      "rendition_type": {
+                        "const": "unavailable"
+                      },
+                      "reason": {
+                        "enum": [
+                          "agent_visible_text_missing"
+                        ]
+                      }
+                    }
+                  }
+                ]
               }
             }
           }
@@ -154,12 +142,8 @@
             }
           }
         },
-        "atomicity_evidence_refs": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": {
-            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
-          }
+        "atomicity_question_id": {
+          "const": "stage0f-independent-atomicity-question-v1"
         }
       }
     }

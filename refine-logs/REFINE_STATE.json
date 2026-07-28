@@ -1,7 +1,7 @@
 {
   "workflow": "aris-adapted-research-refine",
-  "phase": "round_8_identity_envelope_and_partial_identification_revise",
-  "round": 8,
+  "phase": "round_9_identity_redaction_mechanics_repair",
+  "round": 9,
   "review_agents": [
     "round4_protocol_redteam",
     "stagea_schema_impl",
@@ -22,11 +22,11 @@
     "matcher_integration_audit"
   ],
   "last_score": null,
-  "last_verdict": "PAIRWISE_IDENTITY_SPEC_NARROW_ACCEPT_SCHEMA_MECHANICS_ACCEPT_MATCHER_FREEZE_REJECT_STEP1_REJECT",
-  "review_independence": "multi-round: formal specification, first-principles counterexamples, integration audit, root rebuttal and repair, then a second executable value-channel attack and narrow re-review",
+  "last_verdict": "INITIAL_L2_IDENTITY_MECHANICS_FALSIFIED_TESTS_RED_REPAIR_IN_PROGRESS_STEP1_REJECT",
+  "review_independence": "Round 9 used formal specification, first-principles red-team, and integration audit. All three executed bypasses against the initial implementation; root accepted the falsifications and began repairs. A fresh Battle 4 is required after tests return green.",
   "acceptance_status": "not_ready",
   "status": "in_progress",
-  "blocking_gate": "Round 8 proves that maximum matching and deterministic tie-break cannot identify natural event correspondence: greedy changes agreement from 0.5 to 1.0, while K2,2 maximum matchings change exact agreement from 2 to 0. The partial-identification spec is narrowly accepted, but schema-valid value channels still leak substantive labels and raw identity/hash/selector/atomicity authority is absent. The two draft schemas are not integrated into the main loader, barrier, pair ledger, or bounds consumer. Natural behavioral burden remains unmeasured.",
-  "next_artifact": "implement a packet-local opaque-alias redactor and cross-artifact raw-envelope semantic verifier, then build the complete L_all x R_all pair ledger with dual isolated reviewers before any matcher freeze",
-  "timestamp": "2026-07-28T14:50:53+08:00"
+  "blocking_gate": "Round 9 falsified the initial 35/35 identity-mechanics result with executable committed-slot omission, extra-file, symlink, chronology, same-channel, arbitrary-version, typed-invalid, slot-grinding, allowed-projection-laundering, and incomplete-transcript attacks. Reviewer blindness must be tested as a 2-safety hyperproperty over two complete valid traces. Current repair is not test-green: the identity subset has 15 passes and 20 fixture errors. No L2 acceptance, main-barrier integration, Block A, or Step 1 GO is allowed.",
+  "next_artifact": "repair tests/test_stage0f_identity_mechanics.py for canonical session_slot_id and independent redactor generation, encode all Battle 3 false-passes as regressions, implement full valid-trace counterfactual reconstruction, rerun every suite, then conduct fresh Battle 4",
+  "timestamp": "2026-07-28T15:50:00+08:00"
 }

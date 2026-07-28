@@ -41,32 +41,15 @@ class PairwiseIdentityReviewPacketTests(unittest.TestCase):
         )
 
     def valid_packet(self) -> dict:
-        forbidden = [
-            "affected_obligation_ids",
-            "boundary_type",
-            "candidate_action",
-            "normative_action_difference",
-            "outcome",
-            "p_new_proposition_id",
-            "p_old_proposition_id",
-            "raw_source",
-            "target_state_variable_claims",
-            "typed_projection",
-            "update_source_labels",
-        ]
         identity_view = {
-            "raw_envelope_ref": {
-                "artifact_id": "raw-envelope-left",
-                "sha256": "1" * 64,
-            },
-            "evidence_atoms": [
+            "view_alias": "1" * 64,
+            "evidence_presentations": [
                 {
-                    "artifact_id": "observation-001",
-                    "observation_ordinal": 1,
-                    "content_sha256": "2" * 64,
-                    "selector": {
-                        "selector_type": "dom_node",
-                        "node_id": "node-42",
+                    "evidence_alias": "2" * 64,
+                    "source_observation_ordinal": 1,
+                    "rendition": {
+                        "rendition_type": "utf8_text",
+                        "text": "Account state changed.",
                     },
                 }
             ],
@@ -74,38 +57,31 @@ class PairwiseIdentityReviewPacketTests(unittest.TestCase):
                 "start_observation_ordinal": 0,
                 "end_observation_ordinal": 1,
             },
-            "atomicity_evidence_refs": [],
+            "atomicity_question_id": (
+                "stage0f-independent-atomicity-question-v1"
+            ),
         }
         packet = {
             "artifact_type": "pairwise_identity_review_packet",
             "schema_version": "stage0f-measurement-v0.6.0-draft",
             "canonicalization": "stage0f-canonical-json-v1",
-            "artifact_id": "identity-review-packet-001",
-            "pair_id": "3" * 64,
-            "unit_alias": "U-ABCDEF012345",
-            "boundary_location_id": "4" * 64,
-            "reviewer_visible_a0_input_ref": {
-                "artifact_id": "a0-review-input-001",
-                "sha256": "5" * 64,
-            },
+            "artifact_id": "identity-packet-" + "3" * 64,
+            "packet_alias": "3" * 64,
+            "pair_alias": "4" * 64,
+            "context_alias": "5" * 64,
+            "review_protocol_id": (
+                "stage0f-isolated-pairwise-identity-review-v1"
+            ),
+            "redaction_policy_id": (
+                "stage0f-conditional-identity-redaction-v2"
+            ),
             "left_identity_view": identity_view,
             "right_identity_view": copy.deepcopy(identity_view),
-            "redaction_contract": {
-                "policy_id": (
-                    "stage0f-estimand-blind-identity-redaction-v1"
-                ),
-                "policy_sha256": "6" * 64,
-                "executable_sha256": "7" * 64,
-                "input_pair_projection_sha256": "8" * 64,
-                "output_packet_projection_sha256": "9" * 64,
-                "forbidden_field_names": forbidden,
-            },
-            "frozen_at": "2026-07-28T15:00:00+08:00",
         }
-        packet["right_identity_view"]["raw_envelope_ref"] = {
-            "artifact_id": "raw-envelope-right",
-            "sha256": "a" * 64,
-        }
+        packet["right_identity_view"]["view_alias"] = "6" * 64
+        packet["right_identity_view"]["evidence_presentations"][0][
+            "evidence_alias"
+        ] = "7" * 64
         return packet
 
     def validate(self, packet: dict) -> None:
@@ -133,9 +109,18 @@ class PairwiseIdentityReviewPacketTests(unittest.TestCase):
         with self.assertRaises(jsonschema.ValidationError):
             self.validate(packet)
 
-    def test_forbidden_field_roster_cannot_be_shortened(self) -> None:
+    def test_secret_bearing_raw_envelope_hash_is_rejected(self) -> None:
         packet = self.valid_packet()
-        packet["redaction_contract"]["forbidden_field_names"].pop()
+        packet["left_identity_view"]["raw_envelope_ref"] = {
+            "artifact_id": "raw-envelope-left",
+            "sha256": "8" * 64,
+        }
+        with self.assertRaises(jsonschema.ValidationError):
+            self.validate(packet)
+
+    def test_public_input_projection_hash_is_rejected(self) -> None:
+        packet = self.valid_packet()
+        packet["input_pair_projection_sha256"] = "9" * 64
         with self.assertRaises(jsonschema.ValidationError):
             self.validate(packet)
 

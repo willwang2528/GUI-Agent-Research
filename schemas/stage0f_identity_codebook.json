@@ -1,0 +1,11 @@
+{
+  "codebook_id": "stage0f-identity-mechanics-codebook-v0.1-draft",
+  "pairwise_judgments": [
+    "SAME_ATOMIC_EVENT",
+    "DIFFERENT_ATOMIC_EVENT",
+    "SPLIT_MERGE_OR_NONATOMIC",
+    "INSUFFICIENT_IDENTITY_EVIDENCE"
+  ],
+  "visible_evidence_policy": "Only mechanically rendered pre-action A0 evidence selected by the declared allowed projection is visible.",
+  "authority_warning": "A visible rendition may itself correlate with the estimand. Transport-level conditional noninterference does not establish selector exogeneity or estimand independence."
+}

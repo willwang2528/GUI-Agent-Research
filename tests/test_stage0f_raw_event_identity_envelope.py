@@ -44,16 +44,21 @@ class RawEventIdentityEnvelopeTests(unittest.TestCase):
             "schema_version": "stage0f-measurement-v0.6.0-draft",
             "canonicalization": "stage0f-canonical-json-v1",
             "artifact_id": "raw-envelope-001",
+            "identity_stack_manifest_ref": {
+                "artifact_id": "identity-stack-001",
+                "sha256": "a" * 64,
+            },
             "unit_alias": "U-ABCDEF012345",
             "boundary_location_id": "1" * 64,
             "a0_input_ref": {
                 "artifact_id": "a0-input-001",
                 "sha256": "2" * 64,
             },
-            "submission_slot_commitment_ref": {
-                "artifact_id": "a0-submission-slot-001",
+            "submission_session_ref": {
+                "artifact_id": "identity-submission-session-001",
                 "sha256": "3" * 64,
             },
+            "submission_slot_id": "c" * 64,
             "annotator_alias": "annotator-a0",
             "annotator_principal_commitment_sha256": "4" * 64,
             "raw_envelope_id": "5" * 64,
@@ -62,6 +67,13 @@ class RawEventIdentityEnvelopeTests(unittest.TestCase):
                 "content_sha256": "6" * 64,
                 "media_type": "application/json",
                 "byte_length": 128,
+            },
+            "parser_contract": {
+                "parser_id": "stage0f-raw-identity-json-parser-v1",
+                "parser_executable_sha256": "d" * 64,
+                "projection_id": (
+                    "typed-projection-plus-identity-evidence-v1"
+                ),
             },
             "parse_status": "typed_projection_valid",
             "parse_errors": [],

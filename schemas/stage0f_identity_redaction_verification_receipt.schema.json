@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_identity_redaction_verification_receipt.schema.json",
+  "title": "Stage 0F standalone conditional-redaction mechanics receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "canonicalization",
+    "artifact_id",
+    "receipt_id",
+    "identity_stack_manifest_ref",
+    "sidecar_ref",
+    "raw_verification_receipt_refs",
+    "review_packet_ref",
+    "redaction_policy_sha256",
+    "redactor_executable_sha256",
+    "independent_verifier_sha256",
+    "safe_projection_sha256",
+    "reviewer_transcript_sha256",
+    "checks",
+    "authority",
+    "mechanics_level",
+    "raw_roster_scope",
+    "integration_status",
+    "pair_universe_authority",
+    "downstream_eligible",
+    "matcher_authority",
+    "agreement_completeness",
+    "primary_reliability_eligibility",
+    "verified_at"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "identity_redaction_verification_receipt"
+    },
+    "schema_version": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/schema_version"
+    },
+    "canonicalization": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/canonicalization"
+    },
+    "artifact_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
+    },
+    "receipt_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "identity_stack_manifest_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "sidecar_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "raw_verification_receipt_refs": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+      }
+    },
+    "review_packet_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "redaction_policy_sha256": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "redactor_executable_sha256": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "independent_verifier_sha256": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "safe_projection_sha256": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "reviewer_transcript_sha256": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "ALIAS_DERIVATION_PASS",
+          "ALIAS_DOMAIN_SEPARATION_PASS",
+          "ALIAS_MAPPING_COVERAGE_PASS",
+          "NO_PRIVATE_BINDING_FIELD_VISIBLE_PASS",
+          "INDEPENDENT_PACKET_RECOMPUTATION_PASS",
+          "CANONICAL_VIRTUAL_TRANSCRIPT_PASS",
+          "VALID_TRACE_FORBIDDEN_MUTATION_INVARIANCE_PASS"
+        ]
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alias_derivation",
+        "alias_randomness",
+        "sidecar_confidentiality",
+        "conditional_noninterference",
+        "allowed_projection_provenance",
+        "reviewer_blindness",
+        "virtual_transcript_scope"
+      ],
+      "properties": {
+        "alias_derivation": {
+          "const": "local_recomputation_verified"
+        },
+        "alias_randomness": {
+          "enum": [
+            "key_grinding_and_origin_unattested",
+            "external_commit_then_beacon_verified"
+          ]
+        },
+        "sidecar_confidentiality": {
+          "enum": [
+            "self_reported_not_reviewer_visible",
+            "external_acl_attested"
+          ]
+        },
+        "conditional_noninterference": {
+          "const": "valid_trace_enumerated_tests_passed_not_universal_proof"
+        },
+        "allowed_projection_provenance": {
+          "enum": [
+            "partial_annotator_selected",
+            "verified_independent_selector"
+          ]
+        },
+        "reviewer_blindness": {
+          "enum": [
+            "partial_no_external_session_attestation",
+            "external_session_attested"
+          ]
+        },
+        "virtual_transcript_scope": {
+          "enum": [
+            "canonical_files_and_delivery_only_runtime_metadata_unattested",
+            "external_delivery_and_session_transcript_attested"
+          ]
+        }
+      }
+    },
+    "mechanics_level": {
+      "const": "l2_single_explicit_valid_pair_redaction_pass"
+    },
+    "raw_roster_scope": {
+      "const": "exact_over_loaded_closed_single_slot_sessions"
+    },
+    "integration_status": {
+      "const": "not_integrated_no_a0_barrier"
+    },
+    "pair_universe_authority": {
+      "const": "not_established_no_complete_pair_ledger"
+    },
+    "downstream_eligible": {
+      "const": false
+    },
+    "matcher_authority": {
+      "const": "not_established_no_frozen_case_matcher"
+    },
+    "agreement_completeness": {
+      "const": "not_established_no_frozen_case_matcher"
+    },
+    "primary_reliability_eligibility": {
+      "const": false
+    },
+    "verified_at": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+    }
+  }
+}

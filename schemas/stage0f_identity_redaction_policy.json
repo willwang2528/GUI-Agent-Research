@@ -1,0 +1,46 @@
+{
+  "policy_id": "stage0f-conditional-identity-redaction-v2",
+  "policy_version": "0.1-draft",
+  "claim": "mechanism_level_conditional_noninterference_given_declared_allowed_projection",
+  "allowed_projection": [
+    "identity_evidence.evidence_atoms.observation_ordinal",
+    "identity_evidence.evidence_atoms.selector",
+    "identity_evidence.temporal_interval",
+    "derived_rendition := execute(selector, a0_input.prefix_observations[observation_ordinal].agent_visible_text)"
+  ],
+  "forbidden_projection": [
+    "annotator_alias",
+    "annotator_principal_commitment_sha256",
+    "artifact_id",
+    "boundary_location_id",
+    "frozen_at",
+    "identity_evidence.atomicity_claim",
+    "identity_evidence.target_state_variable_claims",
+    "raw_envelope_id",
+    "raw_source",
+    "submission_session_ref",
+    "submission_slot_id",
+    "typed_projection",
+    "unit_alias",
+    "version_hashes"
+  ],
+  "reviewer_visible_identifiers": "packet_local_hmac_aliases_only",
+  "reviewer_visible_hashes": "none",
+  "selector_support": [
+    "whole_observation_text",
+    "text_span_unicode_codepoints"
+  ],
+  "selector_unsupported": [
+    "bounding_box_without_verified_raster_asset",
+    "dom_node_without_verified_dom_asset"
+  ],
+  "atomicity_question_id": "stage0f-independent-atomicity-question-v1",
+  "packet_order": "left_then_right; evidence by observation_ordinal then canonical selector",
+  "limitations": [
+    "allowed_projection_provenance_not_proven",
+    "derived_rendition_can_semantically_reveal_or_correlate_with_the_estimand",
+    "alias_entropy_and_no_grinding_not_externally_attested",
+    "reviewer_acl_and_session_isolation_not_externally_attested",
+    "finite_differential_tests_do_not_prove_universal_noninterference"
+  ]
+}

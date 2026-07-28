@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_identity_measurement_stack_manifest.schema.json",
+  "title": "Stage 0F standalone identity-mechanics stack manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "canonicalization",
+    "artifact_id",
+    "identity_stack_version",
+    "identity_schema_bundle_sha256",
+    "identity_codebook",
+    "matcher_spec",
+    "redaction_policy",
+    "redactor_executable",
+    "raw_verifier_executable",
+    "runtime_contract",
+    "frozen_at"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "identity_measurement_stack_manifest"
+    },
+    "schema_version": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/schema_version"
+    },
+    "canonicalization": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/canonicalization"
+    },
+    "artifact_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
+    },
+    "identity_stack_version": {
+      "const": "stage0f-identity-mechanics-v0.1-draft"
+    },
+    "identity_schema_bundle_sha256": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "identity_codebook": {
+      "$ref": "#/$defs/file_commitment"
+    },
+    "matcher_spec": {
+      "$ref": "#/$defs/file_commitment"
+    },
+    "redaction_policy": {
+      "$ref": "#/$defs/file_commitment"
+    },
+    "redactor_executable": {
+      "$ref": "#/$defs/file_commitment"
+    },
+    "raw_verifier_executable": {
+      "$ref": "#/$defs/file_commitment"
+    },
+    "runtime_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "python_implementation",
+        "python_version",
+        "dependencies"
+      ],
+      "properties": {
+        "python_implementation": {
+          "const": "CPython"
+        },
+        "python_version": {
+          "type": "string",
+          "pattern": "^3\\.\\d+\\.\\d+$"
+        },
+        "dependencies": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "jsonschema",
+            "referencing",
+            "rpds-py"
+          ],
+          "properties": {
+            "jsonschema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "referencing": {
+              "type": "string",
+              "minLength": 1
+            },
+            "rpds-py": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "frozen_at": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+    }
+  },
+  "$defs": {
+    "file_commitment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relative_path",
+        "sha256"
+      ],
+      "properties": {
+        "relative_path": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/relative_path"
+        },
+        "sha256": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+        }
+      }
+    }
+  }
+}
