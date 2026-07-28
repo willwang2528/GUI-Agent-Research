@@ -1,0 +1,42 @@
+{
+  "schema_version": "paper-source-manifest-v1",
+  "fetched_at": "2026-07-28T09:52:17+08:00",
+  "sources": [
+    {
+      "id": "aris-2605.03042",
+      "title": "ARIS: Autonomous Research via Adversarial Multi-Agent Collaboration",
+      "authors": [
+        "Ruofeng Yang",
+        "Yongcan Li",
+        "Shuai Li"
+      ],
+      "year": 2026,
+      "status": "arXiv technical report; not a confirmed CCF-A/B publication",
+      "abstract_url": "https://arxiv.org/abs/2605.03042",
+      "pdf_url": "https://arxiv.org/pdf/2605.03042",
+      "code_url": "https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep",
+      "local_path": "source_provenance/papers/aris_2605.03042.pdf",
+      "sha256": "2f9e22ebacb7a56b43b9675441ab18465729f2ff6f3d34175560368a116ba382",
+      "bytes": 933612,
+      "pages_by_pdfinfo": 21,
+      "research_role": "methodology reference only; not evidence that the GUI Memory hypothesis is true"
+    },
+    {
+      "id": "keshav-2007-how-to-read-a-paper",
+      "title": "How to Read a Paper",
+      "authors": [
+        "S. Keshav"
+      ],
+      "year": 2007,
+      "venue": "ACM SIGCOMM Computer Communication Review 37(3):83-84",
+      "doi": "10.1145/1273445.1273458",
+      "doi_url": "https://doi.org/10.1145/1273445.1273458",
+      "pdf_url": "https://cs.uwaterloo.ca/~brecht/courses/Perf-Eval-Shared/readings/keshav-paper-reading.pdf",
+      "local_path": "source_provenance/papers/keshav_how_to_read_a_paper.pdf",
+      "sha256": "e3d97831bc19b60af9798bb6f0619b18bb886c0afb6ad3fc7a8b2f97512d32f7",
+      "bytes": 48347,
+      "pages_by_pdfinfo": 2,
+      "research_role": "mandatory paper-reading and literature-survey protocol"
+    }
+  ]
+}

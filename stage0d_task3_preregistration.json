@@ -1,0 +1,652 @@
+{
+  "protocol_version": "0.3.0",
+  "analysis_plan_status": "frozen",
+  "execution_manifest_status": "pending",
+  "experiment_class": "single_task_causal_prompt_diagnostic_pilot",
+  "frozen_at": "2026-07-22",
+  "research_question": "After an explicit two-value task revision and a verified pre-update route artifact, does a canonical state synthesis or a task-value-free repair prompt change contract-consistent completion under a frozen policy?",
+  "pre_execution_claim_ceiling": "prompt_context_pilot_design_only",
+  "forbidden_claims_before_cross_task_execution": [
+    "memory_causal",
+    "natural_failure_root_cause",
+    "planner_internal_mechanism",
+    "long_horizon_end_to_end_improvement",
+    "production_prevalence",
+    "stale_memory_replacement_generalization"
+  ],
+  "case_anchor_not_experimental": {
+    "variant": "1update",
+    "admissible_claim": "addition_integration_case_anchor_only",
+    "forbidden_claims": [
+      "supersession_handling",
+      "contract_invalidation",
+      "rollback_recovery"
+    ]
+  },
+  "diagnostic_variant": {
+    "name": "2modification",
+    "repo_commit": "17da111e4858b93c0cab1d88f85e1735fbd1d423",
+    "task_id": 3,
+    "site": "map",
+    "base_task": {
+      "path": "external/InterruptBench/Eval/config_files/wa/test_webarena_lite/3.json",
+      "sha256": "0c5a71fac6cfcbbb15bae860d88b80b64e74a81aaa6778477d804ce0ee9c40a7"
+    },
+    "transformed_task": {
+      "path": "external/InterruptBench/Eval/config_files/wa/test_webarena_lite_transformed_2modification/3.json",
+      "sha256": "d9b58d33e6ffbbf845f90ce78c0dbad2d3c1dabc72692895b9c432e0a6fe99e7"
+    },
+    "raw_update": {
+      "path": "external/InterruptBench/Eval/interrupt_config/raw/2modification.json",
+      "sha256": "bc715fdb975ffd3fc6165e832eae55add02ed5154ec4e71f62c6cb0e3b9d24e5"
+    },
+    "interrupt_spec": {
+      "path": "external/InterruptBench/Eval/interrupt_config/process/interrupt_spec_2modification_06.json",
+      "sha256": "a1620a854134bf2a9154df2df8836c5d7c66de338a5c958e88a7f12a4fd302b2",
+      "interrupt_at_pct": "60%",
+      "update_mode": "append",
+      "extra_steps": 0
+    },
+    "initial_instruction": "Compare the difference in time for walking and driving route from Phipps Conservatory to University of Pittsburgh",
+    "updates": [
+      "Correction: the starting point should be Randyland, not Phipps Conservatory",
+      "And the destination is Carnegie Mellon University, not University of Pittsburgh"
+    ],
+    "update_semantics": {
+      "type": "two_value_revision",
+      "creates_supersession": true,
+      "old_values_explicit": true,
+      "new_values_explicit": true,
+      "requires_pre_update_artifact_for_inclusion": true,
+      "admissible_claim": "revision_integration_and_artifact_repair_pilot"
+    },
+    "replay_semantics": "agent_reset_plus_env_reset_plus_recorded_action_prefix",
+    "strict_checkpoint_equivalence_claimed": false
+  },
+  "prefix_eligibility_before_raw_update": {
+    "evaluated_before_update_and_before_arm_assignment": true,
+    "all_required": [
+      "old_origin_entered_or_used_in_route_query",
+      "old_destination_entered_or_used_in_route_query",
+      "route_artifact_computed_from_old_values",
+      "no_stop_or_termination_before_k",
+      "same_page_url_after_replay",
+      "same_normalized_accessibility_tree_hash_after_replay",
+      "same_task_relevant_field_values_after_replay",
+      "same_prefix_action_hash"
+    ],
+    "post_treatment_variables_may_filter_population": false
+  },
+  "common_post_update_pre_assignment_artifact_checkpoint": {
+    "evaluated_after_raw_update_before_arm_assignment": true,
+    "all_required": [
+      "old_route_artifact_persists_after_raw_update_before_arm_injection"
+    ],
+    "arm_dependent_selection": false,
+    "artifact_fingerprint_schema": {
+      "required_fields": [
+        "from_field_normalized_value",
+        "to_field_normalized_value",
+        "route_result_dom_sha256",
+        "route_mode",
+        "route_computation_action_index",
+        "old_route_artifact_id"
+      ],
+      "dependency_edges": [
+        "old_route_artifact<-origin_old",
+        "old_route_artifact<-destination_old"
+      ],
+      "measurement_time": "after_raw_update_before_arm_assignment"
+    }
+  },
+  "assignment_and_isolation": {
+    "assignment_time": "after_both_common_eligibility_gates_pass",
+    "fresh_agent_browser_session_per_arm": true,
+    "same_verified_prefix_replayed_per_arm": true,
+    "cross_arm_cache_or_store_reuse": false,
+    "arm_order": "randomized_or_counterbalanced_from_frozen_seed_to_arm_map",
+    "seed_to_arm_mapping_artifact": "UNRESOLVED"
+  },
+  "analysis_window": {
+    "start": "immediately_after_update_injection",
+    "end": "task_termination_or_10_post_update_agent_decisions_whichever_occurs_first",
+    "first_semantic_commit_is_secondary_latency_only": true,
+    "delivery_stage_labels_not_used_for_filtering": [
+      "delivered",
+      "seen",
+      "correctly_interpreted"
+    ]
+  },
+  "semantic_atoms": [
+    {
+      "id": "origin_old",
+      "predicate": "task.origin",
+      "value": "Phipps Conservatory",
+      "status": "superseded",
+      "source": "initial_instruction",
+      "relation": {
+        "superseded_by": "update_1"
+      }
+    },
+    {
+      "id": "origin_current",
+      "predicate": "task.origin",
+      "value": "Randyland",
+      "status": "current",
+      "source": "update_1",
+      "relation": {
+        "supersedes": "origin_old"
+      }
+    },
+    {
+      "id": "destination_old",
+      "predicate": "task.destination",
+      "value": "University of Pittsburgh",
+      "status": "superseded",
+      "source": "initial_instruction",
+      "relation": {
+        "superseded_by": "update_2"
+      }
+    },
+    {
+      "id": "destination_current",
+      "predicate": "task.destination",
+      "value": "Carnegie Mellon University",
+      "status": "current",
+      "source": "update_2",
+      "relation": {
+        "supersedes": "destination_old"
+      }
+    },
+    {
+      "id": "travel_modes",
+      "predicate": "task.travel_modes",
+      "value": [
+        "walking",
+        "driving"
+      ],
+      "status": "current",
+      "source": "initial_instruction",
+      "relation": null
+    },
+    {
+      "id": "requested_output",
+      "predicate": "task.requested_output",
+      "value": "compare_route_times",
+      "status": "current",
+      "source": "initial_instruction",
+      "relation": null
+    }
+  ],
+  "renderer": {
+    "implementation_path": "stage0d_prompt_renderers.py",
+    "implementation_sha256": "771578983133103b6abbd57b03dc0abb248c2bab6d9ed09957685a6c827430e0",
+    "version": "task3_prompt_renderer_v1",
+    "message_role": "user",
+    "insertion_point": "immediately_after_raw_update_before_first_post_update_model_call",
+    "frequency": "once",
+    "order": [
+      "state_input",
+      "planning_input"
+    ],
+    "delimiter": "\n\n---STAGE0D-INJECTION---\n\n"
+  },
+  "input_library": {
+    "NONE": {
+      "renderer": "none",
+      "semantic_atom_ids": [],
+      "rendered_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "HISTORY_REPEAT": {
+      "renderer": "history_repeat_v1",
+      "semantic_atom_ids": [
+        "origin_old",
+        "origin_current",
+        "destination_old",
+        "destination_current",
+        "travel_modes",
+        "requested_output"
+      ],
+      "rendered_sha256": "d933c5a0e05eb5206904f41cd39979d0675c19790fc745e6a12869e2a5d7d060"
+    },
+    "FLAT_STATE": {
+      "renderer": "flat_atoms_v1",
+      "semantic_atom_ids": [
+        "origin_old",
+        "origin_current",
+        "destination_old",
+        "destination_current",
+        "travel_modes",
+        "requested_output"
+      ],
+      "rendered_sha256": "53b35c2f2ee0f69b2d6f0defa732a00f69a5952d763142587e8d8ddae49e88b7"
+    },
+    "STRUCTURED_STATE": {
+      "renderer": "structured_atoms_v1",
+      "semantic_atom_ids": [
+        "origin_old",
+        "origin_current",
+        "destination_old",
+        "destination_current",
+        "travel_modes",
+        "requested_output"
+      ],
+      "rendered_sha256": "65a506596a3f91920c8b8ae9c4e5560022cce21070da24e0678617129a52a814"
+    }
+  },
+  "planning_library": {
+    "NONE": {
+      "text": "",
+      "rendered_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "claim_label": "no_additional_prompt"
+    },
+    "P0_ACTIVE_CONTROL": {
+      "text": "Follow four ordinary control steps. First, review the available instruction. Second, organize the visible interface information. Third, choose one allowed next action. Fourth, use the normal response format and continue without adding assumptions.",
+      "rendered_sha256": "63f372cdb8c135eb9420d86ed66f7da3e30387b9e56236079f30e8bb75314637",
+      "claim_label": "generic_four_step_active_control"
+    },
+    "P1_TASK_VALUE_FREE": {
+      "text": "Follow four update-repair steps. First, identify prior decisions or external artifacts invalidated by the update. Second, identify their dependent results. Third, undo or compensate affected state and recompute. Fourth, verify the current source before committing without inferring missing values.",
+      "rendered_sha256": "9390e5b70fca6936e1f2966e842e7b88fdaf76e051758a15d000f164c4c42c11",
+      "claim_label": "task_value_free_repair_prompt"
+    }
+  },
+  "arms": [
+    {
+      "id": "B",
+      "state_input_id": "NONE",
+      "planning_input_id": "NONE",
+      "claim_ceiling": "original_prompt_behavior",
+      "rendered_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "B_P0",
+      "state_input_id": "NONE",
+      "planning_input_id": "P0_ACTIVE_CONTROL",
+      "claim_ceiling": "generic_four_step_active_control_prompt_injection_effect",
+      "rendered_sha256": "63f372cdb8c135eb9420d86ed66f7da3e30387b9e56236079f30e8bb75314637"
+    },
+    {
+      "id": "U_REPEAT_P0",
+      "state_input_id": "HISTORY_REPEAT",
+      "planning_input_id": "P0_ACTIVE_CONTROL",
+      "claim_ceiling": "labeled_history_recap_and_salience_effect",
+      "rendered_sha256": "b17f54dfaaba2019680998f866061d140d740235e7a053aed87f2b4c424b802e"
+    },
+    {
+      "id": "F_P0",
+      "state_input_id": "FLAT_STATE",
+      "planning_input_id": "P0_ACTIVE_CONTROL",
+      "claim_ceiling": "externally_supplied_canonical_state_context_effect",
+      "rendered_sha256": "b6c9e29e4db421193003d789c0f7b693c89bf54c4be165b00e36b9420d9b0009"
+    },
+    {
+      "id": "S_P0",
+      "state_input_id": "STRUCTURED_STATE",
+      "planning_input_id": "P0_ACTIVE_CONTROL",
+      "claim_ceiling": "row_dsl_vs_json_serialization_effect",
+      "rendered_sha256": "9ecf02db123443f3e09a2c95e71376ab15bf3a14983384c7d542380f35cec75d"
+    },
+    {
+      "id": "F_P1",
+      "state_input_id": "FLAT_STATE",
+      "planning_input_id": "P1_TASK_VALUE_FREE",
+      "claim_ceiling": "task_value_free_update_repair_prompt_bundle_effect",
+      "rendered_sha256": "7a13b8d58fe7e97a6ea8625db8ce36876536ab2d4b12de92661f0ef106c91db1"
+    },
+    {
+      "id": "S_P1",
+      "state_input_id": "STRUCTURED_STATE",
+      "planning_input_id": "P1_TASK_VALUE_FREE",
+      "claim_ceiling": "serialization_by_update_repair_prompt_bundle_interaction",
+      "rendered_sha256": "ac01db0b4d89b430e8158e937126c438c23f2a701d4b93c260dfb516ddd0088f"
+    }
+  ],
+  "estimands": [
+    {
+      "id": "active_control_prompt_injection",
+      "role": "nuisance_control",
+      "terms": [
+        {
+          "arm_id": "B_P0",
+          "coefficient": 1
+        },
+        {
+          "arm_id": "B",
+          "coefficient": -1
+        }
+      ],
+      "outcome_id": "contract_consistent_completion",
+      "scale": "risk_difference_pp",
+      "population": "prefix_inclusion_passed_runs",
+      "window": "frozen_analysis_window",
+      "causal_label": "generic_four_step_active_control_prompt_injection_effect"
+    },
+    {
+      "id": "labeled_history_recap",
+      "role": "key_secondary",
+      "terms": [
+        {
+          "arm_id": "U_REPEAT_P0",
+          "coefficient": 1
+        },
+        {
+          "arm_id": "B_P0",
+          "coefficient": -1
+        }
+      ],
+      "outcome_id": "contract_consistent_completion",
+      "scale": "risk_difference_pp",
+      "population": "prefix_inclusion_passed_runs",
+      "window": "frozen_analysis_window",
+      "causal_label": "labeled_history_recap_and_salience_effect"
+    },
+    {
+      "id": "external_state_canonicalization",
+      "role": "primary",
+      "terms": [
+        {
+          "arm_id": "F_P0",
+          "coefficient": 1
+        },
+        {
+          "arm_id": "U_REPEAT_P0",
+          "coefficient": -1
+        }
+      ],
+      "outcome_id": "contract_consistent_completion",
+      "scale": "risk_difference_pp",
+      "population": "prefix_inclusion_passed_runs",
+      "window": "frozen_analysis_window",
+      "causal_label": "externally_supplied_canonical_state_context_effect"
+    },
+    {
+      "id": "serialization",
+      "role": "key_secondary",
+      "terms": [
+        {
+          "arm_id": "S_P0",
+          "coefficient": 1
+        },
+        {
+          "arm_id": "F_P0",
+          "coefficient": -1
+        }
+      ],
+      "outcome_id": "contract_consistent_completion",
+      "scale": "risk_difference_pp",
+      "population": "prefix_inclusion_passed_runs",
+      "window": "frozen_analysis_window",
+      "causal_label": "row_dsl_vs_json_serialization_effect"
+    },
+    {
+      "id": "repair_prompt_flat",
+      "role": "key_secondary",
+      "terms": [
+        {
+          "arm_id": "F_P1",
+          "coefficient": 1
+        },
+        {
+          "arm_id": "F_P0",
+          "coefficient": -1
+        }
+      ],
+      "outcome_id": "contract_consistent_completion",
+      "scale": "risk_difference_pp",
+      "population": "prefix_inclusion_passed_runs",
+      "window": "frozen_analysis_window",
+      "causal_label": "task_value_free_update_repair_prompt_bundle_effect"
+    },
+    {
+      "id": "repair_prompt_structured",
+      "role": "key_secondary",
+      "terms": [
+        {
+          "arm_id": "S_P1",
+          "coefficient": 1
+        },
+        {
+          "arm_id": "S_P0",
+          "coefficient": -1
+        }
+      ],
+      "outcome_id": "contract_consistent_completion",
+      "scale": "risk_difference_pp",
+      "population": "prefix_inclusion_passed_runs",
+      "window": "frozen_analysis_window",
+      "causal_label": "task_value_free_update_repair_prompt_bundle_effect"
+    },
+    {
+      "id": "encoding_by_repair_interaction",
+      "role": "exploratory",
+      "terms": [
+        {
+          "arm_id": "S_P1",
+          "coefficient": 1
+        },
+        {
+          "arm_id": "S_P0",
+          "coefficient": -1
+        },
+        {
+          "arm_id": "F_P1",
+          "coefficient": -1
+        },
+        {
+          "arm_id": "F_P0",
+          "coefficient": 1
+        }
+      ],
+      "outcome_id": "contract_consistent_completion",
+      "scale": "risk_difference_pp",
+      "population": "prefix_inclusion_passed_runs",
+      "window": "frozen_analysis_window",
+      "causal_label": "serialization_by_update_repair_prompt_bundle_interaction"
+    }
+  ],
+  "outcomes": {
+    "unique_primary": {
+      "id": "contract_consistent_completion",
+      "type": "binary",
+      "definition": "Current origin and destination are reflected in final Map fields; a route computation occurs after their last repair; the final answer is derived from the post-update route artifact; no superseded origin or destination governs the final result.",
+      "evaluator_implementation_path": "stage0d_contract_evaluator.py",
+      "evaluator_implementation_sha256": "3f858a04714a3a356a534027348b2f561f81b11ab7c8782b9b4b43e48c76fe78",
+      "evaluator_scope": "normalized_trace_decision_logic_only",
+      "normalizer_implementation_path": "UNRESOLVED",
+      "normalizer_implementation_sha256": "UNRESOLVED",
+      "measurement_source": "full_html_trace_plus_action_log_plus_final_answer",
+      "blind_to_arm": true,
+      "missing_policy": "failure_if_trace_missing_after_valid_prefix",
+      "may_condition_primary_analysis": false
+    },
+    "secondary": [
+      "official_string_match_score",
+      "correct_current_fields",
+      "route_recomputed_after_last_repair",
+      "first_semantic_commit_latency"
+    ],
+    "mechanism_consistency_only": [
+      "elicited_state_report_accuracy",
+      "impact_set_accuracy",
+      "repair_completion",
+      "seen",
+      "correctly_interpreted"
+    ],
+    "post_treatment_variables_may_filter_or_adjust_primary": false,
+    "formal_mediation_claim_allowed": false,
+    "official_evaluator_warning": "The released fuzzy string evaluator calls an unavailable legacy GPT-4 judge and is not the frozen primary evaluator."
+  },
+  "statistics": {
+    "single_task_generalization_claim_allowed": false,
+    "screening_seeds": [
+      101,
+      102,
+      103,
+      104,
+      105
+    ],
+    "confirmation_seeds": [
+      201,
+      202,
+      203,
+      204,
+      205,
+      206,
+      207,
+      208,
+      209,
+      210
+    ],
+    "seed_sets_overlap": false,
+    "screening_candidate_arm": "F_P0",
+    "primary_estimand_id": "external_state_canonicalization",
+    "confirmation_test": "two_sided_exact_mcnemar",
+    "alpha": 0.05,
+    "multiplicity": "holm_for_primary_and_key_secondary_estimands",
+    "ties": "paired_ties_contribute_no_discordance",
+    "censoring": "analysis_window_exhaustion_without_success_is_failure",
+    "pilot_reporting": "paired_effects_and_exact_intervals_without_cross_task_root_cause_claim",
+    "minimum_practical_effect_pp": 20,
+    "power_claim_allowed_at_n10": false,
+    "equivalence_claim_allowed_at_n10": false,
+    "negative_transfer_claim_allowed_without_unaffected_tasks": false
+  },
+  "budget_manifest": {
+    "model_id": "UNRESOLVED",
+    "model_build": "UNRESOLVED",
+    "provider_seed_supported": "UNRESOLVED",
+    "tokenizer": "UNRESOLVED",
+    "temperature": 0,
+    "top_p": 1,
+    "max_output_tokens": 2048,
+    "max_post_update_agent_decisions": 10,
+    "max_total_tool_calls": "UNRESOLVED",
+    "wall_clock_seconds": "UNRESOLVED",
+    "tool_schema_sha256": "UNRESOLVED",
+    "token_count_by_arm": "UNRESOLVED",
+    "padding_policy": "UNRESOLVED",
+    "deliberation_match_audit": "UNRESOLVED"
+  },
+  "memory_topic_gate": {
+    "status": "ineligible_not_tested",
+    "reason": "All experimental arms are one-time prompt/context injections and the released PromptAgent exposes no independent cross-step state store.",
+    "unlocking_by_editing_this_protocol_allowed": false,
+    "required_next_protocol": "separate_persistent_store_protocol_with_store_api_hash_R_STAR_arm_and_memory_estimand"
+  },
+  "functional_oracle_catalog": {
+    "status": "catalog_only_not_part_of_task3_prompt_experiment",
+    "decision_rules_may_reference_catalog": false,
+    "items": [
+      {
+        "id": "E_STAR",
+        "interface": "probe_action_to_raw_observation",
+        "allowed": "deployment_accessible_raw_observation",
+        "forbidden": "parsed_truth_or_correct_action",
+        "control": "equal_action_equal_latency_decoy_probe"
+      },
+      {
+        "id": "G_STAR",
+        "interface": "replace_grounder_output_for_same_raw_observation",
+        "allowed": "observation_bounded_transcription",
+        "forbidden": "second_observation_channel_or_hidden_truth",
+        "control": "downstream_receives_exactly_one_grounder_output"
+      },
+      {
+        "id": "R_STAR",
+        "interface": "replace_persistent_state_updater_for_fixed_grounder_output",
+        "allowed": "fixed_grounder_events_only",
+        "forbidden": "unobserved_truth_or_plan",
+        "control": "single_write_cross_step_read"
+      },
+      {
+        "id": "P_GENERIC",
+        "interface": "learned_or_fixed_information_matched_repair_policy",
+        "allowed": "frozen_domain_general_algorithm",
+        "forbidden": "task_values_dependency_graph_or_answer",
+        "control": "information_and_deliberation_matched_placebo"
+      },
+      {
+        "id": "P_ORACLE",
+        "interface": "replace_planner_output",
+        "allowed": "task_specific_dependency_annotation_from_delivered_information",
+        "forbidden": "final_evaluator_truth",
+        "control": "planning_ceiling_only"
+      },
+      {
+        "id": "V_SELECT_STAR",
+        "interface": "select_preregistered_verification_probe",
+        "allowed": "fixed_probe_policy",
+        "forbidden": "hidden_truth_based_probe_selection",
+        "control": "probe_result_uses_original_downstream_pipeline"
+      },
+      {
+        "id": "A_STAR",
+        "interface": "replace_physical_action_realization",
+        "allowed": "agent_selected_semantic_action_field_and_value",
+        "forbidden": "corrected_semantic_action_field_or_value",
+        "control": "coordinate_click_or_type_correction_only"
+      }
+    ]
+  },
+  "decision_rules": {
+    "memory_topic_status": "ineligible_not_tested",
+    "external_state_canonicalization_progression_signal": {
+      "estimand_id": "external_state_canonicalization",
+      "outcome_id": "contract_consistent_completion",
+      "minimum_effect_pp": 20,
+      "allowed_label": "candidate_signal_on_this_frozen_task_prefix",
+      "required_reporting": "paired_effect_exact_interval_and_all_discordant_pairs",
+      "confirmatory_support_claim_allowed": false
+    },
+    "repair_prompt_support": {
+      "estimand_id": "repair_prompt_flat",
+      "outcome_id": "contract_consistent_completion",
+      "minimum_effect_pp": 20,
+      "allowed_label": "candidate_task_value_free_update_repair_prompt_bundle_signal",
+      "required_reporting": "paired_effect_exact_interval_and_all_discordant_pairs",
+      "confirmatory_support_claim_allowed": false
+    },
+    "root_cause_decision_allowed": false,
+    "topic_rename_decision_allowed_from_task3_alone": false
+  },
+  "execution_evidence": {},
+  "execution_blockers": [
+    {
+      "id": "renderer_hashes",
+      "resolved": true
+    },
+    {
+      "id": "map_webarena",
+      "resolved": false
+    },
+    {
+      "id": "baseline_trajectory_3_modification",
+      "resolved": false
+    },
+    {
+      "id": "prefix_inclusion_and_equivalence",
+      "resolved": false
+    },
+    {
+      "id": "frozen_model_and_seed_support",
+      "resolved": false
+    },
+    {
+      "id": "token_and_deliberation_match",
+      "resolved": false
+    },
+    {
+      "id": "deterministic_primary_evaluator",
+      "resolved": false
+    },
+    {
+      "id": "manual_prompt_leakage_audit",
+      "resolved": false
+    },
+    {
+      "id": "cross_task_confirmatory_families",
+      "resolved": false
+    }
+  ]
+}

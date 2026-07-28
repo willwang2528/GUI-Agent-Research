@@ -1,0 +1,20 @@
+{
+  "workflow": "aris-adapted-research-refine",
+  "phase": "round_4b_bounds_repaired_implementation_still_not_ready",
+  "round": 4,
+  "review_agents": [
+    "round4_protocol_redteam",
+    "stagea_schema_impl",
+    "decision_bounds_fix",
+    "round4b_bounds_reviewer",
+    "final_release_redteam"
+  ],
+  "last_score": null,
+  "last_verdict": "REJECT",
+  "review_independence": "mixed: same-family battle plus fresh read-only bounds and release reviewers",
+  "acceptance_status": "not_ready",
+  "status": "in_progress",
+  "blocking_gate": "Round 4b remains NOT READY. The decision text now separates valid straddling bounds from measurement failure and specifies fail-closed certificates plus finite joint sufficient bits, but those certificate and completion rules are not implemented. Stage A component mechanics pass synthetic tests while the production block entry deliberately returns NOT_READY because full-block manifests, A0-only adjudication, permanent role-disjointness, and whole-block leak invalidation are unfinished. Behavioral burden remains unmeasured.",
+  "next_artifact": "complete the full-block Stage-A ledger and fail-closed negative-certificate/joint-completion validator, add independent one-damage fixtures for every Round-4b counterexample, rebuild a reproducible project-local dependency environment, then obtain a fresh implementation verdict before any synthetic freeze or Block A packet",
+  "timestamp": "2026-07-28T10:58:00+08:00"
+}

@@ -1,0 +1,76 @@
+{
+  "source_origin": "https://osworld-v2-monitor.xlang.ai",
+  "fetched_at": "2026-07-22T23:10:33+08:00",
+  "scope": "official available-configs response, six hosted task-index responses, and the frozen 8-task x 6-config detail-page frame",
+  "validation": {
+    "available_config_count": 6,
+    "task_count_per_config": 108,
+    "unique_task_ids_per_config": 108,
+    "block_a_task_count_per_config": 8,
+    "block_a_expected_detail_pages": 48,
+    "block_a_detail_pages_present": 48,
+    "block_a_detail_availability_audit_complete": true,
+    "block_a_replay_availability_status": "PARTIAL",
+    "block_a_replay_available_pages": 47,
+    "block_a_explicit_no_step_pages": 1
+  },
+  "files": [
+    {
+      "path": "source_provenance/osworld2/raw/available-configs.json",
+      "url": "https://osworld-v2-monitor.xlang.ai/api/available-configs",
+      "sha256": "f0157e503f9b7b5c785054d796b05e360a83cdd38dd0c3c9b7df76ab63bcfb2a"
+    },
+    {
+      "path": "source_provenance/osworld2/raw/brief_claude-opus-4-7.json",
+      "model": "Claude Opus 4.7",
+      "sha256": "f61790e30198452f6c764a932f50964542d5515ff4bfa1744f8009d94ea1c967"
+    },
+    {
+      "path": "source_provenance/osworld2/raw/brief_gpt-5.5.json",
+      "model": "GPT-5.5",
+      "sha256": "2a0e8ba3f185e42fd1aafd9a3b1de6b45458d8187a4325266890eb95e63760b8"
+    },
+    {
+      "path": "source_provenance/osworld2/raw/brief_claude-sonnet-4-6-max.json",
+      "model": "Claude Sonnet 4.6 Max",
+      "sha256": "c5d623471d30700ac0aa93f3354f4b5daceb4a3848313a4d7e697193ea93bf21"
+    },
+    {
+      "path": "source_provenance/osworld2/raw/brief_claude-sonnet-4-6-medium.json",
+      "model": "Claude Sonnet 4.6 Medium",
+      "sha256": "9673f83393843cbda79eef303b2a786c8d9251b70b00b4b5dc5df9309f3818e3"
+    },
+    {
+      "path": "source_provenance/osworld2/raw/brief_MiniMax-M3.json",
+      "model": "MiniMax M3",
+      "sha256": "5ddcdd0cf5cb7144ff438d3a0acd4999ce66d364b1d88943fbbd2c5a522d9049"
+    },
+    {
+      "path": "source_provenance/osworld2/raw/brief_qwen37.json",
+      "model": "Qwen 3.7-Plus",
+      "sha256": "65f63fb00556faf5a8ac1737d19a73bd559867a6f3b1e7a514486b33e5da82ad"
+    },
+    {
+      "path": "source_provenance/osworld2/detail_audit.json",
+      "source_directory": "source_provenance/osworld2/raw/detail_pages",
+      "audit_protocol": "stage0f-detail-availability-v1",
+      "sha256": "7fded94da84bf367146d5fb507cf88b296f196bb178906902b0d6a50f559df6e",
+      "detail_tree_sha256": "7aada049e5711fc10f13162660d8e24670ac4cc694f4a01e1ece19f05e8b6d56",
+      "auditor": "tools/audit_stage0f_detail_pages.py",
+      "auditor_sha256": "11e3b0173d79459928e9050aca3e003aafc23ecb124a8961a70f51cb9fa50fb3"
+    }
+  ],
+  "detail_snapshot_validation": {
+    "expected_filenames_present": "48/48",
+    "valid_replay_pages": "47/48",
+    "explicit_no_step_page": "050__MiniMax-M3.html",
+    "embedded_steps": 9138,
+    "valid_replay_pages_with_all_screenshot_urls": "45/47",
+    "valid_replay_pages_with_all_timestamps": "47/47",
+    "valid_replay_pages_with_all_labels": "47/47",
+    "raw_json_blocks_parseable_by_current_auditor": "2/9138",
+    "replay_payload_identity_fields": "0/47",
+    "page_root_to_expected_filename_binding": "47/47"
+  },
+  "claim_ceiling": "These artifacts establish catalog-frame and frozen detail-field availability only. They do not provide launched-run history, independent outcome truth, evaluator reproducibility, UACF-D labels, causal mechanism evidence, or successful environment replay."
+}

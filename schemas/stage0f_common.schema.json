@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json",
+  "title": "Stage 0F measurement common definitions",
+  "$defs": {
+    "schema_version": {
+      "const": "stage0f-measurement-v0.6.0-draft"
+    },
+    "canonicalization": {
+      "const": "stage0f-canonical-json-v1"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^(?!0{64}$)[0-9a-f]{64}$"
+    },
+    "artifact_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._:-]{2,127}$"
+    },
+    "opaque_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]{2,127}$"
+    },
+    "unit_alias": {
+      "type": "string",
+      "pattern": "^U-[A-F0-9]{12}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "relative_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"
+    },
+    "observation_ordinal": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "artifact_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "sha256"
+      ],
+      "properties": {
+        "artifact_id": {
+          "$ref": "#/$defs/artifact_id"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "asset_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asset_id",
+        "sha256"
+      ],
+      "properties": {
+        "asset_id": {
+          "$ref": "#/$defs/opaque_id"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "evidence_pointer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "observation_ordinal",
+        "content_sha256",
+        "source_kind"
+      ],
+      "properties": {
+        "artifact_id": {
+          "$ref": "#/$defs/artifact_id"
+        },
+        "observation_ordinal": {
+          "$ref": "#/$defs/observation_ordinal"
+        },
+        "content_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "source_kind": {
+          "enum": [
+            "observation",
+            "agent_visible_instruction",
+            "normative_source",
+            "user_input",
+            "preexisting_artifact",
+            "candidate_action",
+            "omission_interval"
+          ]
+        }
+      }
+    },
+    "version_hashes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "prompt_sha256",
+        "codebook_sha256",
+        "code_sha256",
+        "schema_bundle_sha256",
+        "validator_sha256",
+        "matching_sha256",
+        "adjudication_sha256",
+        "normative_canonicalization_sha256"
+      ],
+      "properties": {
+        "prompt_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "codebook_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "code_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "schema_bundle_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "validator_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "matching_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "adjudication_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "normative_canonicalization_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    }
+  }
+}

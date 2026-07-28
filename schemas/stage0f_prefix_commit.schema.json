@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_prefix_commit.schema.json",
+  "title": "Stage 0F rolling prefix observation commitment",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "canonicalization",
+    "prefix_commit_log_id",
+    "unit_alias",
+    "sequence",
+    "observation_ordinal",
+    "observation_sha256",
+    "boundary_namespace",
+    "a0_prefix_payload_sha256",
+    "boundary_location_id",
+    "committed_at",
+    "generator_decisions",
+    "previous_entry_sha256",
+    "entry_sha256"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "prefix_commit"
+    },
+    "schema_version": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/schema_version"
+    },
+    "canonicalization": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/canonicalization"
+    },
+    "prefix_commit_log_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
+    },
+    "unit_alias": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/unit_alias"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "observation_ordinal": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/observation_ordinal"
+    },
+    "observation_sha256": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "boundary_namespace": {
+      "type": "string",
+      "pattern": "^stage0f:[a-z0-9._-]+$"
+    },
+    "a0_prefix_payload_sha256": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "boundary_location_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "committed_at": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+    },
+    "generator_decisions": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "generator_alias",
+          "visible_through_observation_ordinal",
+          "decision",
+          "boundary_location_id",
+          "decided_at"
+        ],
+        "properties": {
+          "generator_alias": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/opaque_id"
+          },
+          "visible_through_observation_ordinal": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/observation_ordinal"
+          },
+          "decision": {
+            "enum": [
+              "propose_location",
+              "reject_location"
+            ]
+          },
+          "boundary_location_id": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+          },
+          "decided_at": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+          }
+        }
+      }
+    },
+    "previous_entry_sha256": {
+      "oneOf": [
+        {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "entry_sha256": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    }
+  }
+}

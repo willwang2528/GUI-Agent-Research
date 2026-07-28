@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_a1_reveal.schema.json",
+  "title": "Stage 0F A1 candidate-action reveal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "canonicalization",
+    "artifact_id",
+    "unit_alias",
+    "a0_input_ref",
+    "a0_label_ref",
+    "adjudicated_event_id",
+    "block_barrier_commitment_sha256",
+    "reveal_kind",
+    "behavior_evidence",
+    "exposure_class",
+    "revealed_at"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "a1_reveal"
+    },
+    "schema_version": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/schema_version"
+    },
+    "canonicalization": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/canonicalization"
+    },
+    "artifact_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
+    },
+    "unit_alias": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/unit_alias"
+    },
+    "a0_input_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "a0_label_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "adjudicated_event_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "block_barrier_commitment_sha256": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "reveal_kind": {
+      "enum": [
+        "observed_action",
+        "omission_interval"
+      ]
+    },
+    "behavior_evidence": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "action_ordinal",
+            "after_observation_ordinal",
+            "semantic_action_type",
+            "semantic_action",
+            "target_object_ids"
+          ],
+          "properties": {
+            "kind": {
+              "const": "observed_action"
+            },
+            "action_ordinal": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "after_observation_ordinal": {
+              "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/observation_ordinal"
+            },
+            "semantic_action_type": {
+              "enum": [
+                "execute",
+                "repair",
+                "write",
+                "compute",
+                "block"
+              ]
+            },
+            "semantic_action": {
+              "type": "string",
+              "minLength": 1
+            },
+            "target_object_ids": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/opaque_id"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "omission_interval_ref"
+          ],
+          "properties": {
+            "kind": {
+              "const": "omission_interval"
+            },
+            "omission_interval_ref": {
+              "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+            }
+          }
+        }
+      ]
+    },
+    "exposure_class": {
+      "const": "a1_behavioral_reveal"
+    },
+    "revealed_at": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+    }
+  }
+}

@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_audit_event.schema.json",
+  "title": "Stage 0F append-only audit event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "canonicalization",
+    "audit_log_id",
+    "sequence",
+    "event_type",
+    "occurred_at",
+    "actor",
+    "artifact_ref",
+    "previous_entry_sha256",
+    "exposure",
+    "version_hashes",
+    "entry_sha256"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "audit_event"
+    },
+    "schema_version": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/schema_version"
+    },
+    "canonicalization": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/canonicalization"
+    },
+    "audit_log_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "event_type": {
+      "enum": [
+        "coordinator_envelope_created",
+        "a0_input_frozen",
+        "a0_label_frozen",
+        "omission_interval_frozen",
+        "a1_reveal_authorized",
+        "a1_revealed",
+        "a1_label_frozen"
+      ]
+    },
+    "occurred_at": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+    },
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actor_alias",
+        "role"
+      ],
+      "properties": {
+        "actor_alias": {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/opaque_id"
+        },
+        "role": {
+          "enum": [
+            "coordinator",
+            "candidate_generator",
+            "a0_annotator",
+            "a1_annotator",
+            "validator"
+          ]
+        }
+      }
+    },
+    "artifact_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "previous_entry_sha256": {
+      "oneOf": [
+        {
+          "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "exposure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recipient_roles",
+        "visible_artifacts"
+      ],
+      "properties": {
+        "recipient_roles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "coordinator",
+              "candidate_generator",
+              "a0_annotator",
+              "a1_annotator",
+              "validator"
+            ]
+          }
+        },
+        "visible_artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+          }
+        }
+      }
+    },
+    "version_hashes": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/version_hashes"
+    },
+    "entry_sha256": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    }
+  }
+}

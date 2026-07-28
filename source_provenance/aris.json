@@ -1,0 +1,19 @@
+{
+  "source": "https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep",
+  "retrieval_method": "GitHub codeload ZIP fallback after local Git transport failed",
+  "upstream_commit": "53562a7c64cc1d55946cba1fb8a8416137143d14",
+  "upstream_commit_url": "https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep/commit/53562a7c64cc1d55946cba1fb8a8416137143d14",
+  "historical_transfer_zip_sha256": "2a91d6e293777cab3b4967d0031569dfd1168fb62c599eab3fc494debb7d44c5",
+  "local_file_count": 666,
+  "canonical_tree_hash_algorithm_id": "aris-tree-sha256-v1",
+  "canonical_tree_hash_algorithm": "root is local_path; reject symlinks; enumerate regular files recursively; sort POSIX paths relative to root by UTF-8 bytes; for each file append relative_path UTF-8, NUL, lowercase ASCII SHA-256(file bytes), LF; SHA-256 the concatenated byte stream",
+  "canonical_tree_sha256": "a6badde78f282f316debe6ef6b7d775ab9085bcc10c84a49c46ba61c3459d6e5",
+  "superseded_tree_sha256": "9b8ae835104da0420521cbcc414486381870436ce510a36339a4eedc326794de",
+  "superseded_reason": "The earlier value did not reproduce under its stated relative-root algorithm and was replaced after an executable verifier reproduced the independent audit result.",
+  "local_path": "external/Auto-claude-code-research-in-sleep",
+  "verifier": "tools/verify_aris_snapshot.py",
+  "verifier_sha256": "211f438d86e7da7f718bea73db31649c5000a8627d8ee7cfd5d501894fa0ed35",
+  "verification_status": "PASS",
+  "verified_at": "2026-07-28T10:12:00+08:00",
+  "note": "This is a source snapshot, not a clone with full local Git history. Codeload archive bytes are not treated as the canonical content identity. PASS verifies local snapshot identity only, not Git history or upstream authenticity beyond the recorded retrieval evidence."
+}

@@ -1,0 +1,24 @@
+# External repositories and immutable/raw evidence are tracked by manifests,
+# not duplicated inside this local research-history repository.
+/external/
+/source_provenance/osworld2/raw/
+/source_provenance/papers/*.pdf
+
+# Superseded full-workspace backups remain local but are not part of new history.
+/goal_backups/
+/BACKUP_*.md
+*.tar.gz
+*.zip
+
+# Local runtimes and generated caches.
+/.venv*/
+**/__pycache__/
+*.py[cod]
+.DS_Store
+.pytest_cache/
+.mypy_cache/
+
+# Local-only transient outputs.
+*.log
+*.tmp
+*.swp

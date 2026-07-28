@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_a1_label.schema.json",
+  "title": "Stage 0F A1 behavioral compatibility label",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "canonicalization",
+    "artifact_id",
+    "unit_alias",
+    "a0_input_ref",
+    "a0_label_ref",
+    "a1_reveal_ref",
+    "adjudicated_event_id",
+    "action_assessment",
+    "affected_obligation_assessments",
+    "primary_uacf_d_positive",
+    "annotator_alias",
+    "frozen_at"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "a1_label"
+    },
+    "schema_version": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/schema_version"
+    },
+    "canonicalization": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/canonicalization"
+    },
+    "artifact_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
+    },
+    "unit_alias": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/unit_alias"
+    },
+    "a0_input_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "a0_label_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "a1_reveal_ref": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
+    },
+    "adjudicated_event_id": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+    },
+    "action_assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_action_executed",
+        "compatible_with_p_old",
+        "compatible_with_p_new",
+        "required_action_omission",
+        "deadline_or_commit_reached",
+        "phenotype"
+      ],
+      "properties": {
+        "candidate_action_executed": {
+          "type": "boolean"
+        },
+        "compatible_with_p_old": {
+          "enum": [
+            "yes",
+            "no",
+            "unidentifiable"
+          ]
+        },
+        "compatible_with_p_new": {
+          "enum": [
+            "yes",
+            "no",
+            "unidentifiable"
+          ]
+        },
+        "required_action_omission": {
+          "type": "boolean"
+        },
+        "deadline_or_commit_reached": {
+          "type": "boolean"
+        },
+        "phenotype": {
+          "enum": [
+            "target_positive",
+            "target_negative",
+            "unidentifiable"
+          ]
+        }
+      }
+    },
+    "affected_obligation_assessments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "obligation_id",
+          "behavioral_status",
+          "evidence_pointer"
+        ],
+        "properties": {
+          "obligation_id": {
+            "type": "string",
+            "pattern": "^O-[A-Z0-9-]+$"
+          },
+          "behavioral_status": {
+            "enum": [
+              "satisfied",
+              "violated",
+              "unidentifiable"
+            ]
+          },
+          "evidence_pointer": {
+            "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/evidence_pointer"
+          }
+        }
+      }
+    },
+    "primary_uacf_d_positive": {
+      "type": "boolean"
+    },
+    "annotator_alias": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/opaque_id"
+    },
+    "frozen_at": {
+      "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
+    }
+  }
+}
