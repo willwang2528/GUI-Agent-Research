@@ -7,12 +7,15 @@
   "github_repository": "https://github.com/willwang2528/GUI-Agent-Research",
   "github_branch": "main",
   "github_sync": {
-    "status": "round7_checkpoint_prepared_push_pending",
-    "content_snapshot_commit": null,
+    "status": "push_not_executed_approval_service_error",
+    "content_snapshot_commit": "1b6d3d1",
     "local_publishing_clone": "/private/tmp/gui-agent-research-publish.Uj54FM/repo",
+    "local_branch_ahead_of_recorded_origin_main_by": 6,
     "recorded_origin_main_before_round7_sync": "4bbc0a365ee0fed121bc3ffef6ea1dd0e8732e40",
     "recorded_origin_main_may_be_stale": true,
-    "next_action": "copy the scoped workspace snapshot into the publishing clone, commit Round 7, push main, and verify the remote ref"
+    "error": "Unknown parameter: input[13].namespace",
+    "failure_boundary": "approval service rejected the request before the git process was created; no network push ran",
+    "next_action": "after the user is informed and explicitly authorizes a new attempt, run git push origin main from the recorded publishing clone and verify the remote ref"
   },
   "thread_id": "019f8362-0542-7fb3-86f5-1f64dc9e6761",
   "goal_status": "active",
@@ -65,6 +68,7 @@
     "no source-origin signature, screenshot bytes, initial pre-action observation alignment, or release-tagged task/evaluator authority",
     "the current production semantic verifier is unavailable and substantive rejection remains fail-closed",
     "exact Stage 0F dependencies are not installed in the Python 3.12 venv",
+    "GitHub push was rejected by the approval service before git executed; Round 7 is committed locally but remote synchronization is unconfirmed",
     "natural behavioral burden has not been measured"
   ],
   "next_actions_in_order": [

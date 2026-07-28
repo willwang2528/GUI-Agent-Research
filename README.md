@@ -41,4 +41,4 @@ Round 7 当前推进到可恢复状态：
 
 Git 只保存研究文本、协议、代码、schema、测试与 manifest。外部仓库、原始轨迹详情页、PDF 和历史压缩备份不上传；其身份由 manifest/hash 锚定。
 
-研究历史目标：[`willwang2528/GUI-Agent-Research`](https://github.com/willwang2528/GUI-Agent-Research) 的 `main`。恢复时以 `research-ledger/CURRENT_GOAL_STATE.json` 中记录的最新远端 commit 与其指向的 checkpoint 为准。
+研究历史目标：[`willwang2528/GUI-Agent-Research`](https://github.com/willwang2528/GUI-Agent-Research) 的 `main`。Round 7 已在本地发布克隆提交为 `1b6d3d1`；`git push` 被审批服务在 Git 进程创建前以 `Unknown parameter: input[13].namespace` 拒绝，因此远端同步未确认。恢复时以 `research-ledger/CURRENT_GOAL_STATE.json` 与其指向的 checkpoint 为准。
