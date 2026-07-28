@@ -1,6 +1,6 @@
 # Stage 0F：OSWorld 2.0 已发布轨迹行为负担预注册
 
-> 版本：v0.5，2026-07-28  
+> 版本：v0.6，2026-07-28  
 > 七步位置：**Step 1，仅证明问题现象与负担**  
 > 状态：**IN REVISION / MEASUREMENT IMPLEMENTATION NOT READY / 尚未标注 / 尚未获得 Step 1 GO**  
 > 禁止结论：Memory 是根因、长程是因果变量、行动契约有效、生产环境发生率
@@ -336,16 +336,18 @@ candidate generator 是测量器的一部分，必须单独验证，不能让 A0
 
 由此生成的 `boundary_location_id` 只承诺 pre-action location 与实际净化 prefix bytes，不能包含 generator 提出的 proposition、obligation、boundary、source 或 action label，也不能决定 A0 可接受的语义。A0 input 接收该 opaque location id 与对应 prefix；validator 必须从 packet bytes 重算 prefix hash 和 location id，不能形成“input hash 包含 location id”的自引用。
 
-每位 A0 annotator 可在同一 location 独立冻结零个、一个或多个 events。每个 raw label 使用：
+每位 A0 annotator 可在同一 location 独立冻结零个、一个或多个 events。每个 raw label id 必须绑定完整 outcome-blind semantic payload，而不是只绑定 proposition/obligation 的子集：
 
 ```json
-{"namespace":"Stage0F-a0-raw-label-v1","boundary_location_id":"sha256:<64hex>","annotator_alias":"<opaque>","proposition_id":"<id>","obligation_ids":["<sorted-id>"],"boundary_type":"<enum>","schema_sha256":"<64hex>","codebook_sha256":"<64hex>"}
+["Stage0F-a0-raw-label-v1","<unit_alias>","<boundary_location_id>","<schema_bundle_sha256>","<codebook_sha256>","<annotator_alias>",{"p_old_proposition_id":"<id>","p_new_proposition_id":"<id>","update_source_labels":["<sorted-label>"],"normative_action_difference":"<text>","affected_obligation_ids":["<sorted-id>"],"boundary_type":"<enum>","grounding_mode":"mechanical|blinded_human"}]
 ```
 
-两位 A0 labels 的 disagreement 必须在 candidate action reveal 前、只依据 A0 artifacts 完成 source-blind adjudication；或者为每位 annotator 保留完全独立、永不回改的 A0→A1 path。primary 使用 adjudication 路径时，`adjudicated_event_id` 使用：
+两位 A0 labels 的 disagreement 必须在 candidate action reveal 前、只依据 A0 artifacts 完成 source-blind adjudication；或者为每位 annotator 保留完全独立、永不回改的 A0→A1 path。任何 final substantive tuple 必须完整等于一条已冻结 raw tuple；唯一允许的跨 raw transform 是对 `update_source_labels` 执行预冻结 `sorted_set_union_utf8_v1`。任一其他字段采用不同 raw、final value 不在输入中、transform executable/hash/output 不匹配，均为 `INVALID_MEASUREMENT`，不得由 helper 自动 fallback。
+
+primary 使用 adjudication 路径时，`adjudicated_event_id` 使用：
 
 ```json
-{"namespace":"Stage0F-adjudicated-event-v1","boundary_location_id":"sha256:<64hex>","proposition_id":"<id>","obligation_ids":["<sorted-id>"],"boundary_type":"<enum>","schema_sha256":"<64hex>","codebook_sha256":"<64hex>"}
+["Stage0F-adjudicated-event-v1","<boundary_location_id>","<p_old_proposition_id>","<p_new_proposition_id>","<normative_action_difference_sha256>",["<sorted-obligation-id>"],"<boundary_type>","<schema_bundle_sha256>","<codebook_sha256>",["<sorted-supporting-raw-label-id>"]]
 ```
 
 多个 obligation ids 按 UTF-8 bytes 排序。同一 location 可有多个不同 `adjudicated_event_id`；A1 必须逐 event 引用已冻结 ID。不得用无长度边界字符串拼接代替任一 canonical preimage；A0 semantics 与 generator 的任何 provisional description 不一致时，以 A0/adjudication freeze 为准，不能拒绝 A0 label、人工对齐 ID 或在 A1 后回改；
@@ -406,6 +408,102 @@ A0 label 必须在 append-only log 中冻结：
 ```
 
 `p_old` evidence 必须早于 `p_new` evidence；二者都不得晚于 A0 cutoff，也不得指向 candidate action。若 `p_old` 只能由后续动作推测，必须写 `old_state_hypothesized=true` 并机械导出 `primary_analysis_eligible=false`。A0 input 中只允许 `boundary_location_id`，不得含 generator 的 proposition/obligation/boundary/source 判断或其可验证 commitment hash。A0 raw labels 经 schema、语义和 hash 验证后写入 `A0_RAW_LABEL_FROZEN`；source-blind adjudication 只能查看这些 A0 artifacts，并在 action reveal 前生成一个或多个 `adjudicated_event_id`，再写入 `A0_LABEL_FROZEN`。冻结后任何修改都产生新版本并使旧 A1 path 作废，不能原地覆盖。
+
+#### 5.2.1 五账本与不可互换的统计对象
+
+对每个 location `l`，必须分别冻结：
+
+```text
+R_l = 全部 immutable raw-label ids
+C_l = adjudication case ids
+P_l = 必须到达 A1 的 path/event ids
+E_l = case-level primary event rows
+M_l = unresolved / typed-invalid / path-missingness records
+```
+
+必须同时满足：
+
+```text
+每个 raw 恰好属于一个 case 或一个机械可验证的 typed-invalid record
+每个 case 恰好属于一种 adjudication mode
+每个 required path 恰好有一个 A1 label，或进入显式 missingness
+每个 case 最多产生一个 primary row，不论该 row 是 positive 还是 negative
+unresolved 不产生 primary boolean，但保留在 denominator、missingness 与 bounds 中
+```
+
+`raw disposition coverage`、`case coverage`、`path coverage`、`primary event count` 与 `missingness coverage` 是五个不同命题，任何一个都不能代替其余四个。A0 barrier、A1 barrier 和 validator PASS output 必须同时公开只读的 R/C/P/E/M rosters、pre-adjudication agreement roster 及精确 counts；任何 downstream bounds consumer 只读取 canonical events 而忽略 R/C/P/M，均为无效实现。
+
+#### 5.2.2 Case formation 与 agreement denominator
+
+同一 location 内的 raw case partition 必须由 outcome-blind、预冻结 matcher 机械产生，而不能由 adjudicator 任意拆分或合并。最终 matcher artifact 至少绑定：
+
+- matcher executable 与 hash；
+- 全部 candidate edges；
+- selected maximum-cardinality matching；
+- ordinal/semantic tie-break trace；
+- unmatched raw roster；
+- 机械重算后的 exact case partition。
+
+当前 v0.6 实现尚无该 matcher，必须输出：
+
+```text
+agreement_completeness = NOT_ESTABLISHED_NO_FROZEN_CASE_MATCHER
+```
+
+因此当前 synthetic tests 即使通过，也不能作为 agreement reliability 或 measurement-stack freeze 的证据。
+
+agreement 只能由 adjudication 前的 immutable raw roster 计算：
+
+```text
+consensus case                  → raw agreement
+human-resolved disagreement    → raw disagreement
+independent paths              → raw disagreement
+paired unresolved              → raw disagreement
+singleton raw                  → one-sided disagreement，进入 b 或 c
+双方均无 event 的 valid location → negative agreement
+```
+
+positive agreement 中的 `a/b/c` 必须来自冻结 matcher 的 raw matched/unmatched records。第三方裁决后的结果不得把 `b/c` 改写为 `a`，也不得把 singleton 或 unresolved 从 denominator 删除。
+
+#### 5.2.3 四种 adjudication mode
+
+| Mode | 合法输入 | A0 输出 | A1/统计角色 |
+|---|---|---|---|
+| `consensus` | 至少两位独立 annotator 的完整 substantive tuple 一致 | 一个 event | 一个 required path；case 最多一个 primary row |
+| `blinded_human_resolution` | 至少两条完整 raw tuple 存在 substantive disagreement | 选择一条完整 raw tuple；仅 source-label set 可做冻结 union | disagreement 仍留在 raw agreement；一个 required path |
+| `independent_paths` | disagreement 不做单一裁决，或 singleton 需保留 | 每条 raw 一个不可回改 path | 所有 path 默认为 `sensitivity_only`；无预冻结 case-level aggregator 时不得进入 primary |
+| `unresolved` | 无法合法选择、adjudicator abstain 或 authority 不足 | 显式 unresolved record | 不产生 A1 primary event；进入 M 与 bounds |
+
+independent paths 只有在 outcome 前冻结 case-level aggregator 后，才允许把多条 path 聚合为最多一个 case-level primary row。否则所有 path 只进入 sensitivity；path phenotype 分歧、任一路缺失或 path alias 均进入 explicit missingness/invalid measurement，不能选择有利的一路。
+
+substantive raw 不得凭 self-reported rejection hash 从 denominator 删除。在 executable codebook rejection verifier 完成前，`OUT_OF_SCOPE_BY_FROZEN_CODEBOOK` 与 `MALFORMED_TYPED_CLAIM` 一律 fail closed 为 `SEM_A0_REJECTION_UNAVAILABLE`；不能被机械验证的记录必须进入 `unresolved`。
+
+#### 5.2.4 Grounding authority
+
+`adjudication_mode` 与 `grounding_mode` 是两条正交轴。
+
+mechanical grounding 必须实际闭合：
+
+```text
+source bytes
+→ frozen parser / normalized trajectory
+→ typed predicate instance
+→ verifier executable and invocation
+→ verifier output
+→ p_old / p_new
+→ release-tagged normative/evaluator rule
+→ normative action difference
+```
+
+pointer/hash 存在、annotator 一致或 packet 内自报 boolean 都不构成 mechanical entailment。当前实现只允许 `synthetic_test_only` frame 上的固定 typed-claim verifier，并必须输出 `SYNTHETIC_TYPED_CLAIM_ONLY`；production frame 继续 fail closed。
+
+blinded-human grounding 至少需要两份独立、outcome/action-blind 的 evidence-entailment records，分别绑定 principal、完整 evidence refs/hash、proposition judgment、normative-rule judgment、freeze time 与 exposure proof；grounding adjudicator 必须与两位 labeler 分离，且 disagreement 不得覆盖。当前 v0.6 尚未实现双 entailment records，必须输出 `HUMAN_ADJUDICATED_EVIDENCE_AUTHORITY_PARTIAL`，不能称 semantic truth 或 mechanically grounded。
+
+#### 5.2.5 Unresolved、missingness 与外部收据
+
+unresolved case 对 point lower bound 贡献 0，但必须按第 7 节进入 upper/sensitivity。若 event-level hidden-opportunity 上限 `H` 未在 outcome 前冻结，相应 event upper 为 `UNIDENTIFIABLE`；unresolved 不是 strict negative。
+
+本地 hash chain 和时间字段只能证明 packet 内 self-sealed chronology，不能证明真实提交早于 reveal。production 还必须具有 adjudication 前、不可回退的外部 raw-roster receipt，以及 trusted decision/barrier/reveal timestamps、完整 access log 与 principal/role-history checkpoint。没有这些 authority 时，删除 raw 后重签整个 packet 仍无法被本地 validator 发现；因此 production temporal/capture completeness 必须保持 `NOT ESTABLISHED`。
 
 ### 5.3 Stage A1：behavior reveal，不能改写 A0
 
@@ -553,6 +651,8 @@ Severity-weighted burden 也必须在 confirmatory Stage B 解封前冻结单事
 - span/decision point：exact match 与 tolerance-window F1；
 - ordinal severity：Krippendorff alpha；
 - disagreement：保留两位原始标签和第三方 adjudication，不覆盖原值。
+
+上述 reliability 统计必须消费 5.2.2 冻结 matcher 产生的 pre-adjudication raw agreement roster。当前 `NOT_ESTABLISHED_NO_FROZEN_CASE_MATCHER` 状态下，positive/negative agreement、Gwet AC1 及其 bootstrap gate 均不得执行或报告为通过。
 
 第一次未见 validation 使用 Block B。primary reliability gate 冻结为：
 
@@ -719,9 +819,9 @@ simultaneous uncertainty procedure、multiplicity family、单调/非单调处�
 | hosted trajectory 的逐运行 build/provenance | **UNKNOWN** | 本地公开 commit 与 release manifest 不能逐轨迹证明实际运行代码、环境和 attempt history |
 | `T0-Catalog` cell coverage | **PASS** | 648/648 cells，各一条 catalog trajectory |
 | launched-run / retry / publication-selection 完整 | **UNKNOWN / T1-Run LOCKED** | 无 run id、seed、launch/retry/exclusion manifest；缺少证明不等于证明官方筛选 |
-| 逐 unit replay 可用性 | **PARTIAL** | 48/48 official detail pages 已冻结；47/48 有可解析 replay JSON，共 9,138 steps；Task 050 × MiniMax 明确无 step data |
+| 逐 unit replay 可用性 | **PARTIAL** | 48 份本地 archived HTML bytes 可被当前本地 parser 投影；47/48 有 replay JSON，共 9,138 steps；Task 050 × MiniMax 为 explicit no-step。source origin authenticity、trusted capture time、screenshot bytes 与 timeline alignment 均未证明 |
 | 逐 unit normative truth / evaluator provenance | **PENDING** | release-tagged task/evaluator truth 尚未逐运行绑定；不能由 replay availability 代替 |
-| Stage A outcome-blind measurement implementation | **FAIL / ROUND-4 REBUILDING** | 旧 v0.4 validator 无效；首版 layered schema 又被 multi-event identity、pre-action commit、full-block A0→A1 barrier 与 omission interval 反例击穿，必须 fail-closed 重建 |
+| Stage A outcome-blind measurement implementation | **REVISE / V2 SYNTHETIC MECHANICS GREEN；PROTOCOL NOT FROZEN** | v2 当前 94/94 Stage A tests、28/28 strict schemas 通过，并覆盖 X58–X64 与 R02/R04/R06/R07/R09/R10/R11/R12/R15；但无 frozen case matcher、human dual-entailment records、external raw/time/access/role authority，且 mechanical verifier 仅为 synthetic typed claim |
 | 盲标本体可靠 | **PENDING** | 尚未执行 pilot |
 | 行为负担 | **PENDING** | 尚未标注，禁止使用作者 challenge tags 代替 |
 | research-decision thresholds | **PROVISIONALLY SPECIFIED；MEASUREMENT STACK NOT FROZEN；NOT EXECUTED** | global task/interface/deficit upper 与 joint structural completions 已进入 decision card；只有 schema/validator/dependency lock/manifest 完整并经 fresh review 后才能 freeze |

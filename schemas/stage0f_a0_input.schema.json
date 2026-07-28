@@ -40,7 +40,7 @@
       "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_id"
     },
     "source_protocol": {
-      "const": "stage0f_osworld2_natural_burden_preregistration.md@v0.5"
+      "const": "stage0f_osworld2_natural_burden_preregistration.md@v0.6"
     },
     "unit_alias": {
       "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/unit_alias"

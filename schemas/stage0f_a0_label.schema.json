@@ -277,6 +277,13 @@
           "additionalProperties": false,
           "required": [
             "contract_version",
+            "verifier_id",
+            "source_bytes_sha256",
+            "normalized_trajectory_sha256",
+            "release_tag_sha256",
+            "predicate_projection_sha256",
+            "normative_rule_projection_sha256",
+            "evaluator_binding_sha256",
             "typed_claim_schema_sha256",
             "typed_claim_sha256",
             "verifier_executable_sha256",
@@ -286,6 +293,27 @@
           "properties": {
             "contract_version": {
               "const": "stage0f-mechanical-grounding-v1"
+            },
+            "verifier_id": {
+              "const": "stage0f-synthetic-typed-claim-verifier-v1"
+            },
+            "source_bytes_sha256": {
+              "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+            },
+            "normalized_trajectory_sha256": {
+              "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+            },
+            "release_tag_sha256": {
+              "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+            },
+            "predicate_projection_sha256": {
+              "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+            },
+            "normative_rule_projection_sha256": {
+              "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+            },
+            "evaluator_binding_sha256": {
+              "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
             },
             "typed_claim_schema_sha256": {
               "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"

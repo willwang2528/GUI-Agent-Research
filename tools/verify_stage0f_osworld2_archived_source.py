@@ -19,8 +19,10 @@ import argparse
 import hashlib
 import html
 import json
+import os
 import re
 import sys
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Iterable, Mapping, MutableMapping, Sequence
 
@@ -35,7 +37,9 @@ AUDIT_PROTOCOL = "stage0f-detail-availability-v1"
 SOURCE_ORIGIN = "https://osworld-v2-monitor.xlang.ai"
 NO_STEP_FILENAME = "050__MiniMax-M3.html"
 CLAIM_CEILING = (
-    "REAL_ARCHIVED_SOURCE_PROJECTION_VERIFIED / "
+    "LOCAL_ARCHIVED_BYTES_LITERAL_PROJECTION_VERIFIED / "
+    "SOURCE_ORIGIN_AUTHENTICITY_UNVERIFIED / "
+    "LOCAL_MANIFEST_SELF_SEALED / TRUSTED_CAPTURE_TIME_MISSING / "
     "OBSERVATION_ASSET_AUTHORITY_PARTIAL / "
     "PRODUCTION_AUTHORITY_INCOMPLETE / NO_BLOCK_A"
 )
@@ -56,16 +60,6 @@ EXPECTED_FILENAMES = tuple(
 )
 EXPECTED_FILENAME_SET = frozenset(EXPECTED_FILENAMES)
 
-REPLAY_RE = re.compile(
-    rb'<script type="application/json" id="trajectory-replay-data">'
-    rb"(.*?)</script>",
-    re.DOTALL,
-)
-ROOT_RE = re.compile(
-    rb'id="trajectory-replay-root".*?data-task-id="([^"]+)".*?'
-    rb'data-model-name="([^"]+)".*?data-trajectory-id="([^"]+)"',
-    re.DOTALL,
-)
 NO_STEP_RE = re.compile(rb"\bNo step data available\b")
 TIMESTAMP_RE = re.compile(r"^[0-9]{8}@[0-9]{12}$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -84,6 +78,111 @@ STEP_KEYS = frozenset(
     }
 )
 SUBACTION_KEYS = frozenset({"category", "detail", "label"})
+
+
+class DuplicateKeyError(ValueError):
+    """Raised when any JSON object repeats a member name."""
+
+
+def _reject_duplicate_pairs(
+    pairs: list[tuple[str, Any]],
+) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise DuplicateKeyError(f"duplicate JSON member name: {key!r}")
+        result[key] = value
+    return result
+
+
+def strict_json_loads(data: str | bytes) -> Any:
+    return json.loads(data, object_pairs_hook=_reject_duplicate_pairs)
+
+
+class ReplayHTMLInspector(HTMLParser):
+    """Collect every element using either reserved replay id.
+
+    ``HTMLParser`` makes attribute ordering irrelevant and exposes duplicate
+    attributes as repeated pairs.  Every matching id is retained, including
+    hidden nodes and nodes of the wrong tag, so an injected duplicate cannot
+    be skipped by a first-match regular expression.
+    """
+
+    TARGET_IDS = frozenset(
+        {"trajectory-replay-root", "trajectory-replay-data"}
+    )
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=False)
+        self.nodes: list[dict[str, Any]] = []
+        self._active_data_nodes: list[int] = []
+
+    def _record(
+        self,
+        tag: str,
+        attrs: list[tuple[str, str | None]],
+        self_closing: bool,
+    ) -> None:
+        ids = [value for key, value in attrs if key.lower() == "id"]
+        if not any(value in self.TARGET_IDS for value in ids):
+            return
+        attr_names = [key.lower() for key, _ in attrs]
+        duplicate_attributes = sorted(
+            {key for key in attr_names if attr_names.count(key) > 1}
+        )
+        attr_map: dict[str, str | None] = {}
+        for key, value in attrs:
+            attr_map.setdefault(key.lower(), value)
+        node = {
+            "tag": tag.lower(),
+            "attrs": attr_map,
+            "ids": ids,
+            "duplicate_attributes": duplicate_attributes,
+            "hidden": "hidden" in attr_map,
+            "self_closing": self_closing,
+            "content": "",
+            "closed": self_closing,
+        }
+        self.nodes.append(node)
+        index = len(self.nodes) - 1
+        if (
+            "trajectory-replay-data" in ids
+            and tag.lower() == "script"
+            and not self_closing
+        ):
+            self._active_data_nodes.append(index)
+
+    def handle_starttag(
+        self, tag: str, attrs: list[tuple[str, str | None]]
+    ) -> None:
+        self._record(tag, attrs, False)
+
+    def handle_startendtag(
+        self, tag: str, attrs: list[tuple[str, str | None]]
+    ) -> None:
+        self._record(tag, attrs, True)
+
+    def handle_data(self, data: str) -> None:
+        if self._active_data_nodes:
+            self.nodes[self._active_data_nodes[-1]]["content"] += data
+
+    def handle_entityref(self, name: str) -> None:
+        if self._active_data_nodes:
+            self.nodes[self._active_data_nodes[-1]][
+                "content"
+            ] += f"&{name};"
+
+    def handle_charref(self, name: str) -> None:
+        if self._active_data_nodes:
+            self.nodes[self._active_data_nodes[-1]][
+                "content"
+            ] += f"&#{name};"
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.lower() != "script" or not self._active_data_nodes:
+            return
+        index = self._active_data_nodes.pop()
+        self.nodes[index]["closed"] = True
 
 
 def canonical_json_bytes(value: Any) -> bytes:
@@ -127,6 +226,115 @@ def expected_identity(filename: str) -> tuple[str, str] | None:
     return task_id, remainder.removesuffix(".html")
 
 
+def _absolute_lexical(path: Path) -> Path:
+    return Path(os.path.abspath(os.fspath(path)))
+
+
+def _source_directory_is_safe(
+    detail_dir: Path,
+    project_root: Path,
+    issues: list[dict[str, str]],
+) -> bool:
+    """Require the exact registered in-project directory and no symlinks."""
+
+    root = _absolute_lexical(project_root)
+    candidate = _absolute_lexical(detail_dir)
+    expected = root / "source_provenance/osworld2/raw/detail_pages"
+    safe = True
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        _issue(
+            issues,
+            "SOURCE_DIRECTORY_OUTSIDE_PROJECT_ROOT",
+            "detail source directory must be contained by project_root",
+            str(detail_dir),
+        )
+        return False
+    if candidate != expected:
+        _issue(
+            issues,
+            "SOURCE_DIRECTORY_REGISTRATION_MISMATCH",
+            (
+                "detail source directory must equal the locally registered "
+                "source_provenance/osworld2/raw/detail_pages path"
+            ),
+            str(detail_dir),
+        )
+        safe = False
+
+    relative = candidate.relative_to(root)
+    current = root
+    for part in relative.parts:
+        current = current / part
+        try:
+            if current.is_symlink():
+                _issue(
+                    issues,
+                    "SOURCE_DIRECTORY_SYMLINK_REJECTED",
+                    "source directory and all in-project components must not be symlinks",
+                    str(current),
+                )
+                safe = False
+                break
+        except OSError as error:
+            _issue(
+                issues,
+                "SOURCE_DIRECTORY_STAT_FAILED",
+                str(error),
+                str(current),
+            )
+            safe = False
+            break
+    if not candidate.is_dir():
+        _issue(
+            issues,
+            "SOURCE_DIRECTORY_MISSING",
+            "registered detail source directory is missing",
+            str(candidate),
+        )
+        return False
+
+    if safe:
+        try:
+            children = list(candidate.iterdir())
+        except OSError as error:
+            _issue(
+                issues,
+                "SOURCE_DIRECTORY_LIST_FAILED",
+                str(error),
+                str(candidate),
+            )
+            return False
+        for child in children:
+            try:
+                if child.is_symlink():
+                    _issue(
+                        issues,
+                        "SOURCE_PAGE_SYMLINK_REJECTED",
+                        "archived source entries must be regular non-symlink files",
+                        str(child),
+                    )
+                    safe = False
+                elif child.suffix == ".html" and not child.is_file():
+                    _issue(
+                        issues,
+                        "SOURCE_PAGE_NOT_REGULAR_FILE",
+                        "archived HTML entries must be regular files",
+                        str(child),
+                    )
+                    safe = False
+            except OSError as error:
+                _issue(
+                    issues,
+                    "SOURCE_PAGE_STAT_FAILED",
+                    str(error),
+                    str(child),
+                )
+                safe = False
+    return safe
+
+
 def _issue(
     issues: list[dict[str, str]],
     code: str,
@@ -150,8 +358,20 @@ def _load_json(
     code: str,
 ) -> dict[str, Any] | None:
     try:
-        value = json.loads(path.read_bytes())
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        value = strict_json_loads(path.read_bytes())
+    except DuplicateKeyError as error:
+        duplicate_code = (
+            code.removesuffix("_JSON_INVALID") + "_DUPLICATE_KEY"
+            if code.endswith("_JSON_INVALID")
+            else code + "_DUPLICATE_KEY"
+        )
+        _issue(issues, duplicate_code, str(error), str(path))
+        return None
+    except (
+        OSError,
+        UnicodeDecodeError,
+        json.JSONDecodeError,
+    ) as error:
         _issue(issues, code, str(error), str(path))
         return None
     if not isinstance(value, dict):
@@ -464,23 +684,62 @@ def _parse_page(
         issues,
     )
 
-    root_matches = ROOT_RE.findall(page_bytes)
-    replay_matches = REPLAY_RE.findall(page_bytes)
+    inspector = ReplayHTMLInspector()
+    try:
+        inspector.feed(page_bytes.decode("utf-8"))
+        inspector.close()
+    except (UnicodeDecodeError, ValueError) as error:
+        _issue(
+            issues,
+            "HTML_PARSE_FAILED",
+            str(error),
+            filename,
+        )
+    root_nodes = [
+        node
+        for node in inspector.nodes
+        if "trajectory-replay-root" in node["ids"]
+    ]
+    data_nodes = [
+        node
+        for node in inspector.nodes
+        if "trajectory-replay-data" in node["ids"]
+    ]
+    for ordinal, node in enumerate(inspector.nodes):
+        if node["duplicate_attributes"]:
+            _issue(
+                issues,
+                "HTML_RESERVED_ID_DUPLICATE_ATTRIBUTE",
+                (
+                    "reserved replay nodes must not repeat HTML attribute "
+                    f"names: {node['duplicate_attributes']!r}"
+                ),
+                filename,
+                f"$.html_reserved_nodes[{ordinal}]",
+            )
+        if node["hidden"]:
+            _issue(
+                issues,
+                "HTML_RESERVED_ID_HIDDEN_NODE",
+                "reserved replay root/data nodes must not be hidden",
+                filename,
+                f"$.html_reserved_nodes[{ordinal}]",
+            )
     no_step_count = len(NO_STEP_RE.findall(page_bytes))
     expected_root = [
-        task_id.encode("utf-8"),
-        config_id.encode("utf-8"),
-        task_id.encode("utf-8"),
+        task_id,
+        config_id,
+        task_id,
     ]
 
     if filename == NO_STEP_FILENAME:
-        if replay_matches or root_matches or no_step_count != 1:
+        if data_nodes or root_nodes or no_step_count != 1:
             _issue(
                 issues,
                 "EXPLICIT_NO_STEP_FABRICATION_OR_AMBIGUITY",
                 (
                     "050__MiniMax-M3 must remain exactly one explicit no-step "
-                    "marker with no replay payload and no replay root"
+                    "marker with no element using either reserved replay id"
                 ),
                 filename,
             )
@@ -515,16 +774,31 @@ def _parse_page(
             "only 050__MiniMax-M3 may be the explicit no-step unit",
             filename,
         )
-    if len(root_matches) != 1:
+    if len(root_nodes) != 1:
         _issue(
             issues,
             "REPLAY_ROOT_CARDINALITY_INVALID",
-            "replay pages must contain exactly one replay root",
+            (
+                "replay pages must contain exactly one element using "
+                "id=trajectory-replay-root, including hidden elements"
+            ),
             filename,
         )
-        root_identity: list[bytes] | None = None
+        root_identity: list[str | None] | None = None
     else:
-        root_identity = list(root_matches[0])
+        root_node = root_nodes[0]
+        if root_node["tag"] != "div" or root_node["self_closing"]:
+            _issue(
+                issues,
+                "REPLAY_ROOT_TAG_INVALID",
+                "trajectory-replay-root must be a non-self-closing div",
+                filename,
+            )
+        root_identity = [
+            root_node["attrs"].get("data-task-id"),
+            root_node["attrs"].get("data-model-name"),
+            root_node["attrs"].get("data-trajectory-id"),
+        ]
         if root_identity != expected_root:
             _issue(
                 issues,
@@ -532,24 +806,57 @@ def _parse_page(
                 "root task/config/trajectory identity must equal the filename",
                 filename,
             )
-    if len(replay_matches) != 1:
+    if len(data_nodes) != 1:
         _issue(
             issues,
             "REPLAY_PAYLOAD_CARDINALITY_INVALID",
-            "replay pages must contain exactly one embedded replay payload",
+            (
+                "replay pages must contain exactly one element using "
+                "id=trajectory-replay-data, including hidden elements"
+            ),
             filename,
         )
         payload: dict[str, Any] = {}
         embedded_bytes = b""
     else:
-        embedded_bytes = replay_matches[0]
-        try:
-            decoded = html.unescape(embedded_bytes.decode("utf-8"))
-            payload_value = json.loads(decoded)
-        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        data_node = data_nodes[0]
+        if data_node["tag"] != "script" or data_node["self_closing"]:
             _issue(
                 issues,
-                "REPLAY_PAYLOAD_JSON_INVALID",
+                "REPLAY_DATA_TAG_INVALID",
+                "trajectory-replay-data must be a non-self-closing script",
+                filename,
+            )
+        if data_node["attrs"].get("type") != "application/json":
+            _issue(
+                issues,
+                "REPLAY_DATA_TYPE_INVALID",
+                "trajectory-replay-data script type must be application/json",
+                filename,
+            )
+        if not data_node["closed"]:
+            _issue(
+                issues,
+                "REPLAY_DATA_UNCLOSED",
+                "trajectory-replay-data script must have a closing tag",
+                filename,
+            )
+        embedded_bytes = data_node["content"].encode("utf-8")
+        try:
+            decoded = html.unescape(embedded_bytes.decode("utf-8"))
+            payload_value = strict_json_loads(decoded)
+        except (
+            UnicodeDecodeError,
+            json.JSONDecodeError,
+            DuplicateKeyError,
+        ) as error:
+            _issue(
+                issues,
+                (
+                    "REPLAY_PAYLOAD_DUPLICATE_KEY"
+                    if isinstance(error, DuplicateKeyError)
+                    else "REPLAY_PAYLOAD_JSON_INVALID"
+                ),
                 str(error),
                 filename,
             )
@@ -616,11 +923,7 @@ def _parse_page(
                 previous_timestamp = timestamp
             projections.append(projected)
 
-    root_strings = (
-        [part.decode("utf-8") for part in root_identity]
-        if root_identity is not None
-        else None
-    )
+    root_strings = root_identity
     _compare_audit_field(
         audit_unit, "root_identity", root_strings, filename, issues
     )
@@ -718,6 +1021,7 @@ def _verify_manifest_and_audit(
     audit_path: Path,
     detail_dir: Path,
     project_root: Path,
+    source_path_safe: bool,
     issues: list[dict[str, str]],
 ) -> None:
     if manifest.get("source_origin") != SOURCE_ORIGIN:
@@ -849,6 +1153,8 @@ def _verify_manifest_and_audit(
                 f"$.summary.{field}",
             )
 
+    if not source_path_safe:
+        return
     actual_files = sorted(
         detail_dir.glob("*.html"),
         key=lambda path: path.name.encode("utf-8"),
@@ -915,22 +1221,19 @@ def verify_archive(
     detail_dir: Path,
     schema_path: Path,
     project_root: Path,
-    *,
-    parser_implementation_path: Path | None = None,
 ) -> dict[str, Any]:
     """Return a fail-closed receipt for one fixed archived-source frame."""
 
-    manifest_path = manifest_path.resolve()
-    audit_path = audit_path.resolve()
-    detail_dir = detail_dir.resolve()
-    schema_path = schema_path.resolve()
-    project_root = project_root.resolve()
-    parser_path = (
-        parser_implementation_path.resolve()
-        if parser_implementation_path is not None
-        else Path(__file__).resolve()
-    )
+    manifest_path = _absolute_lexical(manifest_path)
+    audit_path = _absolute_lexical(audit_path)
+    detail_dir = _absolute_lexical(detail_dir)
+    schema_path = _absolute_lexical(schema_path)
+    project_root = _absolute_lexical(project_root)
+    parser_path = Path(__file__).resolve()
     issues: list[dict[str, str]] = []
+    source_path_safe = _source_directory_is_safe(
+        detail_dir, project_root, issues
+    )
 
     schema = _load_json(
         schema_path, issues, "RECEIPT_SCHEMA_JSON_INVALID"
@@ -941,13 +1244,13 @@ def verify_archive(
     actual_parser_sha = (
         sha256_file(parser_path) if parser_path.is_file() else "0" * 64
     )
-    parser_status = "VERIFIED"
+    parser_status = "LOCAL_HASH_MATCH"
     if (
         registered_id != PARSER_ID
         or registered_path != PARSER_IMPLEMENTATION_PATH
         or registered_sha != actual_parser_sha
     ):
-        parser_status = "MISMATCH"
+        parser_status = "LOCAL_HASH_MISMATCH"
         _issue(
             issues,
             "PARSER_SHA256_MISMATCH",
@@ -969,32 +1272,34 @@ def verify_archive(
             audit_path,
             detail_dir,
             project_root,
+            source_path_safe,
             issues,
         )
 
     audit_units = _expected_audit_unit_map(audit, issues, audit_path)
     units: list[dict[str, Any]] = []
-    for filename in EXPECTED_FILENAMES:
-        path = detail_dir / filename
-        audit_unit = audit_units.get(filename)
-        if not path.is_file():
-            _issue(
-                issues,
-                "ARCHIVED_PAGE_MISSING",
-                "expected archived HTML page is missing",
-                str(path),
-            )
-            continue
-        if audit_unit is None:
-            _issue(
-                issues,
-                "DETAIL_AUDIT_UNIT_MISSING",
-                "detail audit has no unit for the expected page",
-                str(audit_path),
-                "$.units",
-            )
-            continue
-        units.append(_parse_page(path, audit_unit, issues))
+    if source_path_safe:
+        for filename in EXPECTED_FILENAMES:
+            path = detail_dir / filename
+            audit_unit = audit_units.get(filename)
+            if not path.is_file():
+                _issue(
+                    issues,
+                    "ARCHIVED_PAGE_MISSING",
+                    "expected archived HTML page is missing",
+                    str(path),
+                )
+                continue
+            if audit_unit is None:
+                _issue(
+                    issues,
+                    "DETAIL_AUDIT_UNIT_MISSING",
+                    "detail audit has no unit for the expected page",
+                    str(audit_path),
+                    "$.units",
+                )
+                continue
+            units.append(_parse_page(path, audit_unit, issues))
 
     replay_units = [
         unit for unit in units if unit["availability_status"] == "REPLAY_PROJECTED"
@@ -1030,9 +1335,9 @@ def verify_archive(
     valid_before_schema = not issues
     receipt: dict[str, Any] = {
         "artifact_type": "stage0f_osworld2_archived_source_receipt",
-        "schema_version": "1.0.0",
+        "schema_version": "1.1.0",
         "valid": valid_before_schema,
-        "source_kind": "REAL_ARCHIVED_OSWORLD2_DETAIL_HTML",
+        "source_kind": "LOCAL_ARCHIVED_OSWORLD2_DETAIL_HTML_BYTES",
         "manifest": {
             "path": str(manifest_path),
             "sha256": (
@@ -1040,6 +1345,7 @@ def verify_archive(
                 if manifest_path.is_file()
                 else "0" * 64
             ),
+            "authority_status": "LOCAL_MANIFEST_SELF_SEALED",
         },
         "detail_audit": {
             "path": str(audit_path),
@@ -1047,6 +1353,14 @@ def verify_archive(
                 sha256_file(audit_path) if audit_path.is_file() else "0" * 64
             ),
             "protocol": AUDIT_PROTOCOL,
+            "authority_status": "LOCAL_AUDIT_SELF_SEALED",
+        },
+        "schema": {
+            "path": str(schema_path),
+            "sha256": (
+                sha256_file(schema_path) if schema_path.is_file() else "0" * 64
+            ),
+            "authority_status": "LOCAL_SCHEMA_SELF_SEALED",
         },
         "parser": {
             "parser_id": registered_id or PARSER_ID,
@@ -1058,12 +1372,17 @@ def verify_archive(
             ),
             "actual_sha256": actual_parser_sha,
             "status": parser_status,
+            "registration_scope": "LOCAL_SCHEMA_SELF_REGISTRATION_ONLY",
         },
         "frame": {
             "task_ids": list(EXPECTED_TASK_IDS),
             "hosted_config_ids": list(HOSTED_CONFIG_FILENAMES),
             "expected_page_count": 48,
-            "actual_page_count": len(list(detail_dir.glob("*.html"))),
+            "actual_page_count": (
+                len(list(detail_dir.glob("*.html")))
+                if source_path_safe
+                else 0
+            ),
             "replay_page_count": len(replay_units),
             "explicit_no_step_page_count": len(no_step_units),
             "explicit_no_step_file": NO_STEP_FILENAME,
@@ -1076,10 +1395,16 @@ def verify_archive(
         },
         "authority_status": {
             "archived_source_projection": (
-                "REAL_ARCHIVED_SOURCE_PROJECTION_VERIFIED"
+                "LOCAL_ARCHIVED_BYTES_LITERAL_PROJECTION_VERIFIED"
                 if valid_before_schema
-                else "ARCHIVED_SOURCE_PROJECTION_REJECTED"
+                else "LOCAL_ARCHIVED_BYTES_LITERAL_PROJECTION_REJECTED"
             ),
+            "source_origin_authenticity": (
+                "SOURCE_ORIGIN_AUTHENTICITY_UNVERIFIED"
+            ),
+            "manifest_authority": "LOCAL_MANIFEST_SELF_SEALED",
+            "capture_time_authority": "TRUSTED_CAPTURE_TIME_MISSING",
+            "parser_schema_authority": "LOCAL_PARSER_SCHEMA_SELF_SEALED",
             "observation_assets": "OBSERVATION_ASSET_AUTHORITY_PARTIAL",
             "screenshot_bytes": "MISSING_SCREENSHOT_BYTES",
             "screenshot_urls": "REFERENCE_ONLY_NOT_FETCHED_OR_VERIFIED",
@@ -1109,7 +1434,7 @@ def verify_archive(
         receipt["valid"] = False
         receipt["authority_status"][
             "archived_source_projection"
-        ] = "ARCHIVED_SOURCE_PROJECTION_REJECTED"
+        ] = "LOCAL_ARCHIVED_BYTES_LITERAL_PROJECTION_REJECTED"
         receipt["receipt_sha256"] = sha256_bytes(
             canonical_json_bytes(
                 {

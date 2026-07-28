@@ -11,6 +11,7 @@
     "source_kind",
     "manifest",
     "detail_audit",
+    "schema",
     "parser",
     "frame",
     "projection",
@@ -25,16 +26,34 @@
       "const": "stage0f_osworld2_archived_source_receipt"
     },
     "schema_version": {
-      "const": "1.0.0"
+      "const": "1.1.0"
     },
     "valid": {
       "type": "boolean"
     },
     "source_kind": {
-      "const": "REAL_ARCHIVED_OSWORLD2_DETAIL_HTML"
+      "const": "LOCAL_ARCHIVED_OSWORLD2_DETAIL_HTML_BYTES"
     },
     "manifest": {
-      "$ref": "#/$defs/path_receipt"
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "authority_status"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "authority_status": {
+          "const": "LOCAL_MANIFEST_SELF_SEALED"
+        }
+      }
     },
     "detail_audit": {
       "type": "object",
@@ -42,7 +61,8 @@
       "required": [
         "path",
         "sha256",
-        "protocol"
+        "protocol",
+        "authority_status"
       ],
       "properties": {
         "path": {
@@ -54,6 +74,30 @@
         },
         "protocol": {
           "const": "stage0f-detail-availability-v1"
+        },
+        "authority_status": {
+          "const": "LOCAL_AUDIT_SELF_SEALED"
+        }
+      }
+    },
+    "schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "authority_status"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "authority_status": {
+          "const": "LOCAL_SCHEMA_SELF_SEALED"
         }
       }
     },
@@ -147,6 +191,10 @@
       "additionalProperties": false,
       "required": [
         "archived_source_projection",
+        "source_origin_authenticity",
+        "manifest_authority",
+        "capture_time_authority",
+        "parser_schema_authority",
         "observation_assets",
         "screenshot_bytes",
         "screenshot_urls",
@@ -158,9 +206,21 @@
       "properties": {
         "archived_source_projection": {
           "enum": [
-            "REAL_ARCHIVED_SOURCE_PROJECTION_VERIFIED",
-            "ARCHIVED_SOURCE_PROJECTION_REJECTED"
+            "LOCAL_ARCHIVED_BYTES_LITERAL_PROJECTION_VERIFIED",
+            "LOCAL_ARCHIVED_BYTES_LITERAL_PROJECTION_REJECTED"
           ]
+        },
+        "source_origin_authenticity": {
+          "const": "SOURCE_ORIGIN_AUTHENTICITY_UNVERIFIED"
+        },
+        "manifest_authority": {
+          "const": "LOCAL_MANIFEST_SELF_SEALED"
+        },
+        "capture_time_authority": {
+          "const": "TRUSTED_CAPTURE_TIME_MISSING"
+        },
+        "parser_schema_authority": {
+          "const": "LOCAL_PARSER_SCHEMA_SELF_SEALED"
         },
         "observation_assets": {
           "const": "OBSERVATION_ASSET_AUTHORITY_PARTIAL"
@@ -206,7 +266,7 @@
       }
     },
     "claim_ceiling": {
-      "const": "REAL_ARCHIVED_SOURCE_PROJECTION_VERIFIED / OBSERVATION_ASSET_AUTHORITY_PARTIAL / PRODUCTION_AUTHORITY_INCOMPLETE / NO_BLOCK_A"
+      "const": "LOCAL_ARCHIVED_BYTES_LITERAL_PROJECTION_VERIFIED / SOURCE_ORIGIN_AUTHENTICITY_UNVERIFIED / LOCAL_MANIFEST_SELF_SEALED / TRUSTED_CAPTURE_TIME_MISSING / OBSERVATION_ASSET_AUTHORITY_PARTIAL / PRODUCTION_AUTHORITY_INCOMPLETE / NO_BLOCK_A"
     },
     "receipt_sha256": {
       "$ref": "#/$defs/sha256"
@@ -217,23 +277,6 @@
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
-    "path_receipt": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "path",
-        "sha256"
-      ],
-      "properties": {
-        "path": {
-          "type": "string",
-          "minLength": 1
-        },
-        "sha256": {
-          "$ref": "#/$defs/sha256"
-        }
-      }
-    },
     "registered_parser": {
       "type": "object",
       "additionalProperties": false,
@@ -242,7 +285,8 @@
         "implementation_path",
         "registered_sha256",
         "actual_sha256",
-        "status"
+        "status",
+        "registration_scope"
       ],
       "properties": {
         "parser_id": {
@@ -252,16 +296,19 @@
           "const": "tools/verify_stage0f_osworld2_archived_source.py"
         },
         "registered_sha256": {
-          "const": "a44880b3c1e41c5bddbcd4370b27860e5993cfb2787cc622b795c7b0655abbdf"
+          "const": "56cd1e9a3149bcd8eb61da825d8e3cb2d9ded4a9d93b9d81b817b5bb72c5e569"
         },
         "actual_sha256": {
           "$ref": "#/$defs/sha256"
         },
         "status": {
           "enum": [
-            "VERIFIED",
-            "MISMATCH"
+            "LOCAL_HASH_MATCH",
+            "LOCAL_HASH_MISMATCH"
           ]
+        },
+        "registration_scope": {
+          "const": "LOCAL_SCHEMA_SELF_REGISTRATION_ONLY"
         }
       }
     },

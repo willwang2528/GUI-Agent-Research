@@ -77,7 +77,7 @@ ARIS 技术报告的 Keshav 三遍阅读记录见：
 ## 6. 当前唯一允许推进的工作
 
 1. 先把 `REFINE_STATE` 和 tracker 纠正为 Round 3 `REVISE / validator FAIL`；
-2. 不打开 outcome，先完成 prereg v0.5 的 A0/A1 时间门、coordinator sidecar、全 measurement-stack branching、canonical hash、随机数与 matcher；
+2. 不打开 outcome，先完成 prereg v0.6 的 A0/A1 时间门、coordinator sidecar、全 measurement-stack branching、canonical hash、随机数与 matcher；
 3. decision card 增加 C0-E；pure-world 环境门未通过时强制改题或阻断环境主张；
 4. 修正 C1-R 为 R-boundary total downstream effect，并严格区分 C3-a representation gain 与 C4 capability boundary；
 5. 重建 coordinator/A0/A1/audit-event schemas，执行 Draft 2020-12 Schema 后再做跨字段语义验证；

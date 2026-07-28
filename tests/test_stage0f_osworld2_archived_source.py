@@ -5,6 +5,8 @@ import hashlib
 import html
 import importlib.util
 import json
+import re
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -17,6 +19,12 @@ VERIFIER_PATH = ROOT / "tools" / "verify_stage0f_osworld2_archived_source.py"
 AUDITOR_PATH = ROOT / "tools" / "audit_stage0f_detail_pages.py"
 SCHEMA_PATH = (
     ROOT / "schemas" / "stage0f_osworld2_archived_source_receipt.schema.json"
+)
+REPLAY_CONTENT_RE = re.compile(
+    rb'(<script type="application/json" id="trajectory-replay-data">)'
+    rb"(.*?)"
+    rb"(</script>)",
+    re.DOTALL,
 )
 
 
@@ -85,10 +93,18 @@ def replay_html(
 class Fixture:
     def __init__(self, root: Path) -> None:
         self.root = root
-        self.detail_dir = root / "detail_pages"
-        self.audit_path = root / "detail_audit.json"
-        self.manifest_path = root / "manifest.json"
+        self.detail_dir = (
+            root / "source_provenance/osworld2/raw/detail_pages"
+        )
+        self.audit_path = (
+            root / "source_provenance/osworld2/detail_audit.json"
+        )
+        self.manifest_path = (
+            root / "source_provenance/osworld2/manifest.json"
+        )
         self.detail_dir.mkdir(parents=True)
+        (root / "tools").mkdir()
+        shutil.copy2(AUDITOR_PATH, root / "tools/audit_stage0f_detail_pages.py")
         for filename in VERIFIER.EXPECTED_FILENAMES:
             task_id, config_with_suffix = filename.split("__", 1)
             config_id = config_with_suffix.removesuffix(".html")
@@ -135,7 +151,9 @@ class Fixture:
                     "sha256": sha256_file(self.audit_path),
                     "detail_tree_sha256": summary["detail_tree_sha256"],
                     "auditor": "tools/audit_stage0f_detail_pages.py",
-                    "auditor_sha256": sha256_file(AUDITOR_PATH),
+                    "auditor_sha256": sha256_file(
+                        self.root / "tools/audit_stage0f_detail_pages.py"
+                    ),
                 }
             ],
         }
@@ -148,15 +166,14 @@ class Fixture:
         self,
         *,
         schema_path: Path = SCHEMA_PATH,
-        parser_path: Path | None = None,
+        detail_dir: Path | None = None,
     ) -> dict[str, Any]:
         return VERIFIER.verify_archive(
             self.manifest_path,
             self.audit_path,
-            self.detail_dir,
+            detail_dir or self.detail_dir,
             schema_path,
-            ROOT,
-            parser_implementation_path=parser_path,
+            self.root,
         )
 
     def mutate_payload(
@@ -166,12 +183,39 @@ class Fixture:
     ) -> None:
         path = self.detail_dir / filename
         page = path.read_bytes()
-        matches = VERIFIER.REPLAY_RE.findall(page)
+        matches = REPLAY_CONTENT_RE.findall(page)
         assert len(matches) == 1
-        payload = json.loads(html.unescape(matches[0].decode("utf-8")))
+        prefix, content, suffix = matches[0]
+        payload = json.loads(html.unescape(content.decode("utf-8")))
         mutation(payload)
         replacement = json.dumps(payload, sort_keys=True).encode("utf-8")
-        path.write_bytes(page.replace(matches[0], replacement, 1))
+        path.write_bytes(
+            page.replace(prefix + content + suffix, prefix + replacement + suffix, 1)
+        )
+
+    def reseal_hashes_only(self) -> None:
+        audit = json.loads(self.audit_path.read_text(encoding="utf-8"))
+        units = {unit["file"]: unit for unit in audit["units"]}
+        for filename in VERIFIER.EXPECTED_FILENAMES:
+            units[filename]["sha256"] = sha256_file(self.detail_dir / filename)
+        files = sorted(
+            self.detail_dir.glob("*.html"),
+            key=lambda path: path.name.encode("utf-8"),
+        )
+        tree_sha = VERIFIER.tree_hash(files, self.detail_dir)
+        audit["summary"]["detail_tree_sha256"] = tree_sha
+        self.audit_path.write_text(
+            json.dumps(audit, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        manifest = json.loads(self.manifest_path.read_text(encoding="utf-8"))
+        detail_entry = manifest["files"][0]
+        detail_entry["sha256"] = sha256_file(self.audit_path)
+        detail_entry["detail_tree_sha256"] = tree_sha
+        self.manifest_path.write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
 
 
 def issue_codes(receipt: dict[str, Any]) -> set[str]:
@@ -193,10 +237,30 @@ class OSWorld2ArchivedSourceAdapterTests(unittest.TestCase):
         self.assertEqual(receipt["projection"]["projected_replay_units"], 47)
         self.assertEqual(receipt["projection"]["explicit_no_step_units"], 1)
         self.assertEqual(receipt["projection"]["projected_steps"], 141)
-        self.assertEqual(receipt["parser"]["status"], "VERIFIED")
+        self.assertEqual(receipt["parser"]["status"], "LOCAL_HASH_MATCH")
         self.assertEqual(
             receipt["authority_status"]["archived_source_projection"],
-            "REAL_ARCHIVED_SOURCE_PROJECTION_VERIFIED",
+            "LOCAL_ARCHIVED_BYTES_LITERAL_PROJECTION_VERIFIED",
+        )
+        self.assertEqual(
+            receipt["authority_status"]["source_origin_authenticity"],
+            "SOURCE_ORIGIN_AUTHENTICITY_UNVERIFIED",
+        )
+        self.assertEqual(
+            receipt["authority_status"]["manifest_authority"],
+            "LOCAL_MANIFEST_SELF_SEALED",
+        )
+        self.assertEqual(
+            receipt["authority_status"]["capture_time_authority"],
+            "TRUSTED_CAPTURE_TIME_MISSING",
+        )
+        self.assertEqual(
+            receipt["authority_status"]["parser_schema_authority"],
+            "LOCAL_PARSER_SCHEMA_SELF_SEALED",
+        )
+        self.assertEqual(
+            receipt["parser"]["registration_scope"],
+            "LOCAL_SCHEMA_SELF_REGISTRATION_ONLY",
         )
         self.assertEqual(
             receipt["authority_status"]["screenshot_urls"],
@@ -227,6 +291,197 @@ class OSWorld2ArchivedSourceAdapterTests(unittest.TestCase):
         self.assertEqual(
             step["screenshot_reference"]["authority_status"],
             "REFERENCE_ONLY_NOT_FETCHED_OR_VERIFIED",
+        )
+
+    def test_benign_root_attribute_reordering_is_accepted(self) -> None:
+        target = self.fixture.detail_dir / "009__MiniMax-M3.html"
+        page = target.read_bytes()
+        old = (
+            b'<div id="trajectory-replay-root" '
+            b'data-task-id="009" '
+            b'data-model-name="MiniMax-M3" '
+            b'data-trajectory-id="009">'
+        )
+        new = (
+            b'<div data-trajectory-id="009" '
+            b'data-model-name="MiniMax-M3" '
+            b'id="trajectory-replay-root" '
+            b'data-task-id="009">'
+        )
+        self.assertIn(old, page)
+        target.write_bytes(page.replace(old, new, 1))
+        self.fixture.reseal_hashes_only()
+
+        receipt = self.fixture.verify()
+
+        self.assertTrue(receipt["valid"], receipt["issues"])
+
+    def test_hidden_duplicate_root_and_data_ids_are_rejected(self) -> None:
+        target = self.fixture.detail_dir / "009__MiniMax-M3.html"
+        injected = (
+            b'<div hidden id="trajectory-replay-root" '
+            b'data-task-id="009" data-model-name="MiniMax-M3" '
+            b'data-trajectory-id="009"></div>'
+            b'<script hidden type="application/json" '
+            b'id="trajectory-replay-data">'
+            b'{"steps":[],"total_steps":0}</script>'
+        )
+        target.write_bytes(target.read_bytes() + injected)
+        self.fixture.reseal_hashes_only()
+
+        receipt = self.fixture.verify()
+
+        self.assertFalse(receipt["valid"])
+        codes = issue_codes(receipt)
+        self.assertIn("HTML_RESERVED_ID_HIDDEN_NODE", codes)
+        self.assertIn("REPLAY_ROOT_CARDINALITY_INVALID", codes)
+        self.assertIn("REPLAY_PAYLOAD_CARDINALITY_INVALID", codes)
+
+    def test_manifest_duplicate_json_member_is_rejected(self) -> None:
+        raw = self.fixture.manifest_path.read_bytes()
+        self.fixture.manifest_path.write_bytes(
+            raw.replace(
+                b"{",
+                (
+                    b'{"source_origin":'
+                    b'"https://osworld-v2-monitor.xlang.ai",'
+                ),
+                1,
+            )
+        )
+
+        receipt = self.fixture.verify()
+
+        self.assertFalse(receipt["valid"])
+        self.assertIn("MANIFEST_DUPLICATE_KEY", issue_codes(receipt))
+
+    def test_detail_audit_duplicate_json_member_is_rejected(self) -> None:
+        raw = self.fixture.audit_path.read_bytes()
+        self.fixture.audit_path.write_bytes(
+            raw.replace(
+                b"{",
+                b'{"audit_protocol":"stage0f-detail-availability-v1",',
+                1,
+            )
+        )
+
+        receipt = self.fixture.verify()
+
+        self.assertFalse(receipt["valid"])
+        self.assertIn("DETAIL_AUDIT_DUPLICATE_KEY", issue_codes(receipt))
+
+    def test_schema_duplicate_json_member_is_rejected(self) -> None:
+        schema_path = Path(self.temp.name) / "duplicate.schema.json"
+        raw = SCHEMA_PATH.read_bytes()
+        schema_path.write_bytes(
+            raw.replace(
+                b"{",
+                (
+                    b'{"$schema":'
+                    b'"https://json-schema.org/draft/2020-12/schema",'
+                ),
+                1,
+            )
+        )
+
+        receipt = self.fixture.verify(schema_path=schema_path)
+
+        self.assertFalse(receipt["valid"])
+        self.assertIn("RECEIPT_SCHEMA_DUPLICATE_KEY", issue_codes(receipt))
+
+    def test_embedded_replay_duplicate_json_member_is_rejected(self) -> None:
+        target = self.fixture.detail_dir / "009__MiniMax-M3.html"
+        page = target.read_bytes()
+        self.assertIn(b'"total_steps": 3', page)
+        target.write_bytes(
+            page.replace(
+                b'"total_steps": 3',
+                b'"total_steps": 3, "total_steps": 3',
+                1,
+            )
+        )
+        self.fixture.reseal()
+
+        receipt = self.fixture.verify()
+
+        self.assertFalse(receipt["valid"])
+        self.assertIn(
+            "REPLAY_PAYLOAD_DUPLICATE_KEY", issue_codes(receipt)
+        )
+
+    def test_local_reseal_changes_projection_but_never_origin_claim(self) -> None:
+        before = self.fixture.verify()
+
+        def change_literal(payload: dict[str, Any]) -> None:
+            payload["steps"][0]["detail"]["coordinate"] = [900, 901]
+            payload["steps"][0]["label"] = "Left click (900, 901)"
+
+        self.fixture.mutate_payload("009__MiniMax-M3.html", change_literal)
+        self.fixture.reseal()
+        after = self.fixture.verify()
+
+        self.assertTrue(before["valid"], before["issues"])
+        self.assertTrue(after["valid"], after["issues"])
+        self.assertNotEqual(
+            before["projection"]["archive_literal_projection_sha256"],
+            after["projection"]["archive_literal_projection_sha256"],
+        )
+        for receipt in (before, after):
+            self.assertEqual(
+                receipt["authority_status"]["source_origin_authenticity"],
+                "SOURCE_ORIGIN_AUTHENTICITY_UNVERIFIED",
+            )
+            self.assertEqual(
+                receipt["authority_status"]["manifest_authority"],
+                "LOCAL_MANIFEST_SELF_SEALED",
+            )
+            self.assertEqual(receipt["claim_ceiling"], VERIFIER.CLAIM_CEILING)
+
+    def test_source_directory_outside_project_root_is_rejected(self) -> None:
+        outside_root = Path(self.temp.name).parent / (
+            Path(self.temp.name).name + "-outside"
+        )
+        self.addCleanup(lambda: shutil.rmtree(outside_root, ignore_errors=True))
+        shutil.copytree(self.fixture.detail_dir, outside_root)
+
+        receipt = self.fixture.verify(detail_dir=outside_root)
+
+        self.assertFalse(receipt["valid"])
+        self.assertIn(
+            "SOURCE_DIRECTORY_OUTSIDE_PROJECT_ROOT", issue_codes(receipt)
+        )
+        self.assertEqual(receipt["units"], [])
+
+    def test_symlinked_source_page_is_rejected_before_reading(self) -> None:
+        target = self.fixture.detail_dir / "009__MiniMax-M3.html"
+        outside = self.fixture.root / "outside-page.html"
+        target.rename(outside)
+        target.symlink_to(outside)
+
+        receipt = self.fixture.verify()
+
+        self.assertFalse(receipt["valid"])
+        self.assertIn("SOURCE_PAGE_SYMLINK_REJECTED", issue_codes(receipt))
+        self.assertEqual(receipt["units"], [])
+
+    def test_no_step_page_rejects_hidden_reserved_data_id(self) -> None:
+        target = self.fixture.detail_dir / VERIFIER.NO_STEP_FILENAME
+        target.write_bytes(
+            target.read_bytes()
+            + (
+                b'<script hidden id="trajectory-replay-data" '
+                b'type="application/json">'
+                b'{"steps":[],"total_steps":0}</script>'
+            )
+        )
+        self.fixture.reseal_hashes_only()
+
+        receipt = self.fixture.verify()
+
+        self.assertFalse(receipt["valid"])
+        self.assertIn(
+            "EXPLICIT_NO_STEP_FABRICATION_OR_AMBIGUITY",
+            issue_codes(receipt),
         )
 
     def test_single_byte_page_mutation_is_rejected(self) -> None:
@@ -321,13 +576,17 @@ class OSWorld2ArchivedSourceAdapterTests(unittest.TestCase):
         self.assertIn("REPLAY_TOTAL_STEPS_MISMATCH", issue_codes(receipt))
 
     def test_parser_hash_mismatch_is_rejected(self) -> None:
-        fake_parser = Path(self.temp.name) / "fake_parser.py"
-        fake_parser.write_text("# different bytes\n", encoding="utf-8")
+        schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+        schema["$defs"]["registered_parser"]["properties"][
+            "registered_sha256"
+        ]["const"] = "0" * 64
+        schema_path = Path(self.temp.name) / "wrong-hash.schema.json"
+        schema_path.write_text(json.dumps(schema), encoding="utf-8")
 
-        receipt = self.fixture.verify(parser_path=fake_parser)
+        receipt = self.fixture.verify(schema_path=schema_path)
 
         self.assertFalse(receipt["valid"])
-        self.assertEqual(receipt["parser"]["status"], "MISMATCH")
+        self.assertEqual(receipt["parser"]["status"], "LOCAL_HASH_MISMATCH")
         self.assertIn("PARSER_SHA256_MISMATCH", issue_codes(receipt))
 
     def test_missing_page_is_rejected(self) -> None:
@@ -362,15 +621,18 @@ class OSWorld2ArchivedSourceAdapterTests(unittest.TestCase):
     def test_schema_registration_tamper_is_rejected(self) -> None:
         schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
         schema["$defs"]["registered_parser"]["properties"][
-            "registered_sha256"
-        ]["const"] = "0" * 64
+            "parser_id"
+        ]["const"] = "unregistered-parser"
         schema_path = Path(self.temp.name) / "tampered.schema.json"
         schema_path.write_text(json.dumps(schema), encoding="utf-8")
 
         receipt = self.fixture.verify(schema_path=schema_path)
 
         self.assertFalse(receipt["valid"])
-        self.assertIn("PARSER_SHA256_MISMATCH", issue_codes(receipt))
+        self.assertIn(
+            "PARSER_REGISTRATION_IDENTITY_MISMATCH",
+            issue_codes(receipt),
+        )
 
     def test_receipt_schema_compiles_with_ajv2020_strict(self) -> None:
         script = r"""

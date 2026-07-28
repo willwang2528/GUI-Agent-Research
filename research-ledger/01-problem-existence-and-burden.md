@@ -23,6 +23,8 @@
 | 2026-07-28 | Python 3.12 迁移目标 | 项目内 `.venv-stage0f-py312` 已使用本机 Python 3.12.13 创建；精确依赖尚未安装 | 仅证明目标解释器存在；依赖安装被审批服务错误阻塞，全套验证仍以已审计 Python 3.9.6 环境执行，不声称 3.12 可复现 |
 | 2026-07-28 | Round 5 full-block / bounds battle | Stage A 79/79 与 strict schema 27/27；bounds root 33/33；独立 bounds bounded replay 22/22 | 仅接受指定 synthetic mechanics；Stage A fresh replay、真实 authority adapters、Python 3.12 回归与 behavioral measurement 均未完成，继续 `NO STEP 1 GO` |
 | 2026-07-28 | Round 6 adjudication/grounding battle | X62 两种分歧路径均不能编码；X63 共同错误命题在重签后仍 PASS；fresh reviewer 在反驳后撤回宽泛 ACCEPT | Stage A v1 退回 `REVISE`：X58–X60 只是局部防线；必须先实现 disagreement-preserving adjudication 与 mechanical/human grounding 分流 |
+| 2026-07-28 | Round 7 Stage A v2 battle | 94/94 Stage A、104/104 组合回归、28/28 strict schemas；独立 reviewer 发现并复核 R11 singleton unresolved 修复 | 只接受指定 synthetic R/C/P/E/M mechanics；无 frozen case matcher、human dual-entailment 与 external raw/time/access/role authority，协议仍 `REVISE` |
+| 2026-07-28 | Round 7 local archived-source battle | 22/22 tests；48 local HTML pages、47 replay、1 no-step、9,138 literal steps；独立复算 hash 与 real receipt | 只证明 `LOCAL_ARCHIVED_BYTES_LITERAL_PROJECTION_VERIFIED`；manifest 是 self-sealed，source origin、trusted capture time、observation assets 与 production authority 未证明 |
 
 ## 当前第一性结论
 

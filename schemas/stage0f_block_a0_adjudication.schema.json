@@ -397,6 +397,7 @@
         "supporting_a0_raw_label_ids",
         "adjudication_mode",
         "grounding_mode",
+        "analysis_role",
         "raw_support_adjudication",
         "source_resolution"
       ],
@@ -438,6 +439,12 @@
           "enum": [
             "mechanical",
             "blinded_human"
+          ]
+        },
+        "analysis_role": {
+          "enum": [
+            "primary",
+            "sensitivity_only"
           ]
         },
         "raw_support_adjudication": {
@@ -607,6 +614,7 @@
         "case_status",
         "event_ids",
         "required_a1_event_ids",
+        "primary_event_id",
         "typed_invalid_raw_label_ids",
         "agreement_status",
         "frozen_at"
@@ -652,6 +660,16 @@
           "items": {
             "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
           }
+        },
+        "primary_event_id": {
+          "oneOf": [
+            {
+              "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "typed_invalid_raw_label_ids": {
           "type": "array",

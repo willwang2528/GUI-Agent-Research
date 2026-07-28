@@ -134,6 +134,7 @@
                 "supporting_a0_raw_label_ids",
                 "adjudication_mode",
                 "grounding_mode",
+                "analysis_role",
                 "evidence_class",
                 "raw_support_adjudication_sha256",
                 "frozen_at"
@@ -164,6 +165,12 @@
                   "enum": [
                     "mechanical",
                     "blinded_human"
+                  ]
+                },
+                "analysis_role": {
+                  "enum": [
+                    "primary",
+                    "sensitivity_only"
                   ]
                 },
                 "evidence_class": {

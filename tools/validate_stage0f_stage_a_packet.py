@@ -74,6 +74,22 @@ RAW_TRAJECTORY_PROJECTION = "observation-current-action-v1"
 SYNTHETIC_PUBLISHED_TRAJECTORY_FORMAT = (
     "stage0f-synthetic-published-trajectory-v1"
 )
+SYNTHETIC_TYPED_CLAIM_VERIFIER_ID = (
+    "stage0f-synthetic-typed-claim-verifier-v1"
+)
+SYNTHETIC_TYPED_CLAIM_SCHEMA = {
+    "type": "object",
+    "required": list(A0_RAW_FIELDS),
+    "additionalProperties": False,
+    "field_types": {
+        "p_old_proposition_id": "string",
+        "p_new_proposition_id": "string",
+        "update_source_labels": "sorted_unique_string_array",
+        "normative_action_difference": "string",
+        "affected_obligation_ids": "sorted_unique_string_array",
+        "boundary_type": "enum",
+    },
+}
 
 ARTIFACT_FILES: Mapping[str, str] = {
     "coordinator_envelope": "coordinator_envelope.json",
@@ -511,6 +527,176 @@ def a0_label_source_projection(label: Mapping[str, Any]) -> List[str]:
     )
 
 
+def synthetic_mechanical_grounding_contract(
+    a0_input: Mapping[str, Any],
+    label: Mapping[str, Any],
+    source_bytes_sha256: str,
+    normalized_trajectory_sha256: str,
+    release_tag: str = "synthetic-test-only",
+) -> Dict[str, Any]:
+    """Build the frozen executable synthetic typed-claim contract."""
+
+    predicate_projection = {
+        "prefix_observations": a0_input["prefix_observations"],
+        "cutoff_observation_ordinal": a0_input[
+            "cutoff_observation_ordinal"
+        ],
+    }
+    normative_projection = a0_input["normative_schema"]
+    typed_claim = a0_label_semantic_projection(label)
+    evaluator_binding = [
+        "stage0f-synthetic-evaluator-binding-v1",
+        release_tag,
+        normative_projection,
+        SYNTHETIC_TYPED_CLAIM_SCHEMA,
+    ]
+    result_preimage = [
+        "stage0f-synthetic-mechanical-grounding-result-v1",
+        source_bytes_sha256,
+        normalized_trajectory_sha256,
+        canonical_sha256(release_tag),
+        canonical_sha256(predicate_projection),
+        canonical_sha256(normative_projection),
+        canonical_sha256(evaluator_binding),
+        canonical_sha256(SYNTHETIC_TYPED_CLAIM_SCHEMA),
+        canonical_sha256(typed_claim),
+        "MECHANICALLY_VERIFIED",
+    ]
+    return {
+        "contract_version": "stage0f-mechanical-grounding-v1",
+        "verifier_id": SYNTHETIC_TYPED_CLAIM_VERIFIER_ID,
+        "source_bytes_sha256": source_bytes_sha256,
+        "normalized_trajectory_sha256": normalized_trajectory_sha256,
+        "release_tag_sha256": canonical_sha256(release_tag),
+        "predicate_projection_sha256": canonical_sha256(
+            predicate_projection
+        ),
+        "normative_rule_projection_sha256": canonical_sha256(
+            normative_projection
+        ),
+        "evaluator_binding_sha256": canonical_sha256(
+            evaluator_binding
+        ),
+        "typed_claim_schema_sha256": canonical_sha256(
+            SYNTHETIC_TYPED_CLAIM_SCHEMA
+        ),
+        "typed_claim_sha256": canonical_sha256(typed_claim),
+        "verifier_executable_sha256": validator_file_sha256(),
+        "verifier_result_sha256": canonical_sha256(result_preimage),
+        "frozen_at": label["frozen_at"],
+    }
+
+
+def _synthetic_typed_claim_projection(
+    a0_input: Mapping[str, Any],
+) -> Optional[Dict[str, Any]]:
+    """Derive the one registered synthetic claim from exact source/rule data."""
+
+    observations = a0_input["prefix_observations"]
+    if (
+        len(observations) < 2
+        or observations[0]["agent_visible_text"]
+        != "Old state is active."
+        or observations[-1]["agent_visible_text"]
+        != "World truth changed to the new state."
+    ):
+        return None
+    affected = utf8_sorted(
+        item["obligation_id"]
+        for item in a0_input["normative_schema"]["obligations"]
+        if item["predicate"] == "Commit uses the new state."
+        and item["applicability"] == "Changed evidence is visible."
+        and item["deadline_or_commit"] == "Before next commit."
+    )
+    if affected != ["O-KEEP-NEW"]:
+        return None
+    return {
+        "p_old_proposition_id": "PROP-OLD-STATE",
+        "p_new_proposition_id": "PROP-NEW-STATE",
+        "update_source_labels": ["world_truth_changed"],
+        "normative_action_difference": (
+            "The commit must use the new state."
+        ),
+        "affected_obligation_ids": ["O-KEEP-NEW"],
+        "boundary_type": "action_commit",
+    }
+
+
+def _mechanical_grounding_error(
+    loaded: Mapping[str, Any],
+    unit_alias: str,
+    a0_input: Mapping[str, Any],
+    label: Mapping[str, Any],
+    support_raws: Sequence[Mapping[str, Any]],
+    artifact_name: str,
+) -> Optional[Dict[str, Any]]:
+    """Execute, rather than merely trust, the frozen typed-claim contract."""
+
+    stage = STAGE_ORDER[3]
+    frame = loaded["fixed"]["block_frame"]
+    if frame["block_scope"] != "synthetic_test_only":
+        return _block_error(
+            stage,
+            "SEM_MECHANICAL_GROUNDING_UNAVAILABLE",
+            "the only registered typed-claim verifier is synthetic-test-only",
+            artifact_name,
+            "$.mechanical_grounding_contract",
+        )
+    manifest = loaded["fixed"]["block_location_manifest"]
+    scan = next(
+        item
+        for item in manifest["unit_scans"]
+        if item["unit_alias"] == unit_alias
+    )
+    stream = _referenced_value(
+        loaded,
+        "block_stream_ledger",
+        scan["stream_ledger_relative_path"],
+    )
+    raw_trajectory = _referenced_value(
+        loaded,
+        "block_raw_trajectory",
+        stream["raw_trajectory_relative_path"],
+    )
+    coordinator = next(
+        item
+        for item in loaded["referenced"][
+            "coordinator_envelope"
+        ].values()
+        if item["unit_alias"] == unit_alias
+    )
+    derived = _synthetic_typed_claim_projection(a0_input)
+    expected_contract = synthetic_mechanical_grounding_contract(
+        a0_input,
+        label,
+        coordinator["source_snapshot"]["raw_response_sha256"],
+        artifact_ref(raw_trajectory)["sha256"],
+        coordinator["provenance"]["release_tag"],
+    )
+    if (
+        derived is None
+        or derived != a0_label_semantic_projection(label)
+        or label["mechanical_grounding_contract"] != expected_contract
+        or label["evidence_class"]
+        != "MECHANICALLY_VERIFIED_TYPED_CLAIM"
+        or label["semantic_verification"] != "MECHANICALLY_VERIFIED"
+        or any(
+            raw["semantic_payload"]["grounding_mode"] != "mechanical"
+            or a0_raw_semantic_projection(raw["semantic_payload"])
+            != derived
+            for raw in support_raws
+        )
+    ):
+        return _block_error(
+            stage,
+            "SEM_MECHANICAL_GROUNDING_INCOMPLETE",
+            "mechanical grounding must execute the frozen source-bytes to predicate to normative-rule typed-claim verifier",
+            artifact_name,
+            "$.mechanical_grounding_contract",
+        )
+    return None
+
+
 def expected_raw_support_adjudication(
     label: Mapping[str, Any],
     support_raws: Sequence[Mapping[str, Any]],
@@ -627,6 +813,24 @@ def expected_raw_support_adjudication(
         if frozen_transform is not None:
             record["frozen_transform"] = frozen_transform
         field_resolutions.append(record)
+    untransformed_fields = [
+        field
+        for field in A0_RAW_FIELDS
+        if field not in transform_fields
+    ]
+    tuple_level_matches = [
+        raw_id
+        for raw_id, projection in raw_projections.items()
+        if all(
+            projection[field] == final_projection[field]
+            for field in untransformed_fields
+        )
+    ]
+    if not tuple_level_matches:
+        raise ValueError(
+            "final adjudicated projection is not one complete raw tuple "
+            "apart from explicitly frozen deterministic transforms"
+        )
     return {
         "rule_id": A0_RAW_SUPPORT_ADJUDICATION_RULE,
         "adjudicated_semantic_projection_sha256": canonical_sha256(
@@ -5194,7 +5398,6 @@ def first_full_block_semantic_error(
             event_id: set() for event_id in event_ids
         }
         dispositions_by_unresolved: Dict[str, Set[str]] = {}
-        rejected_by_case: Dict[str, Set[str]] = {}
         for disposition in adjudication["raw_label_dispositions"]:
             if disposition["disposition"] == "adjudicated_event":
                 event_id = disposition["adjudicated_event_id"]
@@ -5267,36 +5470,18 @@ def first_full_block_semantic_error(
                     unresolved_id, set()
                 ).add(disposition["a0_raw_label_id"])
             else:
-                if (
-                    disposition["adjudication_mode"] != "unresolved"
-                    or disposition.get("rejection_reason_code") is None
-                    or disposition.get("rejection_evidence") is None
-                    or any(
-                        disposition.get(field) is None
-                        for field in (
-                            "decided_by",
-                            "decision_rule",
-                            "decided_at",
-                        )
-                    )
-                    or disposition.get("adjudicated_event_id") is not None
-                    or disposition.get("unresolved_record_id") is not None
-                ):
-                    return (
-                        _block_error(
-                            stage,
-                            "SEM_A0_REJECTION_EVIDENCE",
-                            "typed-invalid rejection needs a closed reason, frozen evidence, adjudicator, rule, and time",
-                            location[
-                                "a0_adjudication_container_relative_path"
-                            ],
-                            "$.raw_label_dispositions",
-                        ),
-                        source_categories,
-                    )
-                rejected_by_case.setdefault(
-                    disposition["case_id"], set()
-                ).add(disposition["a0_raw_label_id"])
+                return (
+                    _block_error(
+                        stage,
+                        "SEM_A0_REJECTION_UNAVAILABLE",
+                        "substantive rejection is disabled until an executable frozen codebook rule can verify it; use unresolved instead",
+                        location[
+                            "a0_adjudication_container_relative_path"
+                        ],
+                        "$.raw_label_dispositions",
+                    ),
+                    source_categories,
+                )
         groups_by_id = {
             item["path_group_id"]: item
             for item in adjudication["independent_path_groups"]
@@ -5328,6 +5513,7 @@ def first_full_block_semantic_error(
             case_id = case["case_id"]
             case_raws = set(case["raw_label_ids"])
             case_events = set(case["event_ids"])
+            primary_event_id = case["primary_event_id"]
             if (
                 case["required_a1_event_ids"] != case["event_ids"]
                 or not case_events.issubset(events_by_id)
@@ -5341,6 +5527,19 @@ def first_full_block_semantic_error(
                     ]
                     != case["adjudication_mode"]
                     for raw_id in case_raws
+                )
+                or (
+                    primary_event_id is not None
+                    and primary_event_id not in case_events
+                )
+                or any(
+                    events_by_id[event_id]["analysis_role"]
+                    != (
+                        "primary"
+                        if event_id == primary_event_id
+                        else "sensitivity_only"
+                    )
+                    for event_id in case_events
                 )
             ):
                 return (
@@ -5367,6 +5566,7 @@ def first_full_block_semantic_error(
                     or case["typed_invalid_raw_label_ids"]
                     or case.get("independent_path_group_id") is not None
                     or case.get("unresolved_record_id") is not None
+                    or primary_event_id != next(iter(case_events))
                     or (
                         case["adjudication_mode"] == "consensus"
                         and derived_agreement != "raw_exact_agreement"
@@ -5414,6 +5614,7 @@ def first_full_block_semantic_error(
                     )
                     != len(case_raws)
                     or case["typed_invalid_raw_label_ids"]
+                    or primary_event_id is None
                     or case.get("unresolved_record_id") is not None
                     or case["agreement_status"] != derived_agreement
                 ):
@@ -5444,9 +5645,9 @@ def first_full_block_semantic_error(
                     )
                     != case_raws
                     or case["typed_invalid_raw_label_ids"]
+                    or primary_event_id is not None
                     or case.get("independent_path_group_id") is not None
-                    or case["agreement_status"]
-                    != "unresolved_disagreement"
+                    or case["agreement_status"] != derived_agreement
                 ):
                     return (
                         _block_error(
@@ -5465,9 +5666,9 @@ def first_full_block_semantic_error(
                     case["adjudication_mode"] != "unresolved"
                     or case_events
                     or case["required_a1_event_ids"]
+                    or primary_event_id is not None
                     or set(case["typed_invalid_raw_label_ids"])
                     != case_raws
-                    or rejected_by_case.get(case_id, set()) != case_raws
                     or case.get("independent_path_group_id") is not None
                     or case.get("unresolved_record_id") is not None
                     or case["agreement_status"]
@@ -5701,41 +5902,6 @@ def first_full_block_semantic_error(
                     ),
                     source_categories,
                 )
-            if label["grounding_mode"] == "mechanical":
-                return (
-                    _block_error(
-                        stage,
-                        "SEM_MECHANICAL_GROUNDING_UNAVAILABLE",
-                        "mechanical semantic grounding requires a registered frozen typed-claim verifier; none is available in this implementation",
-                        container_event["a0_label_relative_path"],
-                        "$.mechanical_grounding_contract",
-                    ),
-                    source_categories,
-                )
-            if (
-                label["evidence_class"]
-                != "HUMAN_ADJUDICATED_EVIDENCE"
-                or label["semantic_verification"]
-                != "NOT_MECHANICALLY_VERIFIED"
-                or label["mechanical_grounding_contract"] is not None
-                or any(
-                    raw_by_id[item]["semantic_payload"][
-                        "grounding_mode"
-                    ]
-                    != "blinded_human"
-                    for item in supports
-                )
-            ):
-                return (
-                    _block_error(
-                        stage,
-                        "SEM_A0_GROUNDING_CLAIM",
-                        "current A0 semantic claims are explicit blinded-human evidence and cannot be labeled mechanically verified",
-                        container_event["a0_label_relative_path"],
-                        "$.grounding_mode",
-                    ),
-                    source_categories,
-                )
             category, error = _source_category_or_error(
                 loaded,
                 a0_input,
@@ -5762,6 +5928,39 @@ def first_full_block_semantic_error(
             )
             if error:
                 return error, source_categories
+            if label["grounding_mode"] == "mechanical":
+                error = _mechanical_grounding_error(
+                    loaded,
+                    unit_alias,
+                    a0_input,
+                    label,
+                    support_raws,
+                    container_event["a0_label_relative_path"],
+                )
+                if error:
+                    return error, source_categories
+            elif (
+                label["evidence_class"]
+                != "HUMAN_ADJUDICATED_EVIDENCE"
+                or label["semantic_verification"]
+                != "NOT_MECHANICALLY_VERIFIED"
+                or label["mechanical_grounding_contract"] is not None
+                or any(
+                    raw["semantic_payload"]["grounding_mode"]
+                    != "blinded_human"
+                    for raw in support_raws
+                )
+            ):
+                return (
+                    _block_error(
+                        stage,
+                        "SEM_A0_GROUNDING_CLAIM",
+                        "blinded-human claims must remain HUMAN_ADJUDICATED_EVIDENCE / NOT_MECHANICALLY_VERIFIED",
+                        container_event["a0_label_relative_path"],
+                        "$.grounding_mode",
+                    ),
+                    source_categories,
+                )
             label_times.append(parse_timestamp(label["frozen_at"]))
             if event_id in all_event_records:
                 return (
@@ -5871,6 +6070,7 @@ def first_full_block_semantic_error(
                 ],
                 "adjudication_mode": item["adjudication_mode"],
                 "grounding_mode": item["grounding_mode"],
+                "analysis_role": item["analysis_role"],
                 "evidence_class": _referenced_value(
                     loaded, "a0_label", item["a0_label_relative_path"]
                 )["evidence_class"],
@@ -5968,9 +6168,12 @@ def first_full_block_semantic_error(
     primary_rows_by_case: Dict[str, List[str]] = {}
     for freeze in a1_freezes:
         event_id = freeze["adjudicated_event_id"]
-        (unit_alias, boundary_id), a0_input, a0_label, _ = all_event_records[
-            event_id
-        ]
+        (
+            (unit_alias, boundary_id),
+            a0_input,
+            a0_label,
+            a0_container_event,
+        ) = all_event_records[event_id]
         if (
             freeze["unit_alias"] != unit_alias
             or freeze["boundary_location_id"] != boundary_id
@@ -6077,7 +6280,10 @@ def first_full_block_semantic_error(
                 source_categories,
             )
         latest_a1 = max(latest_a1, label_time)
-        if a1_label["primary_uacf_d_positive"]:
+        if (
+            a0_container_event["analysis_role"] == "primary"
+            and a1_label["primary_uacf_d_positive"]
+        ):
             primary_rows_by_case.setdefault(
                 a0_label["case_id"], []
             ).append(event_id)
@@ -6131,20 +6337,6 @@ def first_full_block_semantic_error(
                 ),
                 source_categories,
             )
-    if any(
-        len(event_ids_for_case) > 1
-        for event_ids_for_case in primary_rows_by_case.values()
-    ):
-        return (
-            _block_error(
-                stage,
-                "SEM_A0_CASE_PRIMARY_MULTIPLICITY",
-                "one raw-derived case can contribute at most one primary analysis row",
-                BLOCK_A1_BARRIER_FILE,
-                "$.event_freezes",
-            ),
-            source_categories,
-        )
         if atomicity["action_unit"] == "batch_bundle":
             ordinals = [
                 item["action_ordinal"] for item in action["subactions"]
@@ -6181,6 +6373,20 @@ def first_full_block_semantic_error(
             copied = dict(component_error)
             copied["artifact"] = freeze["a1_label_relative_path"]
             return copied, source_categories
+    if any(
+        len(event_ids_for_case) > 1
+        for event_ids_for_case in primary_rows_by_case.values()
+    ):
+        return (
+            _block_error(
+                stage,
+                "SEM_A0_CASE_PRIMARY_MULTIPLICITY",
+                "one raw-derived case can contribute at most one primary analysis row",
+                BLOCK_A1_BARRIER_FILE,
+                "$.event_freezes",
+            ),
+            source_categories,
+        )
     if latest_a1 >= a1_seal:
         return (
             _block_error(
@@ -6935,7 +7141,11 @@ def first_full_block_exposure_error(
 def _full_block_authority_projection(
     loaded: Mapping[str, Any],
     source_categories: Mapping[str, str],
-) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
+) -> Tuple[
+    Dict[str, Any],
+    List[Dict[str, Any]],
+    Dict[str, Any],
+]:
     """Expose read-only roots and event-local refs for downstream validators."""
 
     fixed = loaded["fixed"]
@@ -7083,6 +7293,16 @@ def _full_block_authority_projection(
                         "boundary_location_id"
                     ],
                     "adjudicated_event_id": event_id,
+                    "case_id": container_event["case_id"],
+                    "adjudication_mode": container_event[
+                        "adjudication_mode"
+                    ],
+                    "grounding_mode": container_event[
+                        "grounding_mode"
+                    ],
+                    "analysis_role": container_event[
+                        "analysis_role"
+                    ],
                     "observation_ordinal": prefix[
                         "observation_ordinal"
                     ],
@@ -7131,7 +7351,141 @@ def _full_block_authority_projection(
             item["adjudicated_event_id"].encode("utf-8"),
         )
     )
-    return roots, events
+    raw_roster: List[Dict[str, Any]] = []
+    case_roster: List[Dict[str, Any]] = []
+    path_roster: List[Dict[str, Any]] = []
+    primary_roster: List[Dict[str, Any]] = []
+    missingness_roster: List[Dict[str, Any]] = []
+    agreement_roster: List[Dict[str, Any]] = []
+    for location in manifest["locations"]:
+        unit_alias = location["unit_alias"]
+        boundary_id = location["boundary_location_id"]
+        submissions = _referenced_value(
+            loaded,
+            "block_a0_submissions",
+            location["a0_submissions_relative_path"],
+        )
+        adjudication = _referenced_value(
+            loaded,
+            "block_a0_adjudication",
+            location["a0_adjudication_container_relative_path"],
+        )
+        disposition_by_raw = {
+            item["a0_raw_label_id"]: item
+            for item in adjudication["raw_label_dispositions"]
+        }
+        for submission in submissions["submissions"]:
+            for raw in submission["raw_labels"]:
+                disposition = disposition_by_raw[
+                    raw["a0_raw_label_id"]
+                ]
+                raw_roster.append(
+                    {
+                        "unit_alias": unit_alias,
+                        "boundary_location_id": boundary_id,
+                        "a0_raw_label_id": raw["a0_raw_label_id"],
+                        "annotator_alias": submission[
+                            "annotator_alias"
+                        ],
+                        "case_id": disposition["case_id"],
+                        "disposition": disposition["disposition"],
+                        "adjudication_mode": disposition[
+                            "adjudication_mode"
+                        ],
+                        "grounding_mode": raw["semantic_payload"][
+                            "grounding_mode"
+                        ],
+                    }
+                )
+        event_by_id = {
+            item["adjudicated_event_id"]: item
+            for item in adjudication["events"]
+        }
+        for case in adjudication["case_roster"]:
+            case_roster.append(
+                {
+                    "unit_alias": unit_alias,
+                    "boundary_location_id": boundary_id,
+                    **case,
+                }
+            )
+            agreement_roster.append(
+                {
+                    "case_id": case["case_id"],
+                    "raw_label_ids": case["raw_label_ids"],
+                    "agreement_status": case["agreement_status"],
+                    "agreement_source": (
+                        "PRE_ADJUDICATION_RAW_ONLY"
+                    ),
+                    "matcher_authority": (
+                        "SELF_SEALED_CASE_PARTITION_SYNTAX_ONLY"
+                    ),
+                }
+            )
+            for event_id in case["required_a1_event_ids"]:
+                event = event_by_id[event_id]
+                freeze = a1_freezes[event_id]
+                path_roster.append(
+                    {
+                        "case_id": case["case_id"],
+                        "adjudicated_event_id": event_id,
+                        "analysis_role": event["analysis_role"],
+                        "a1_status": "PRESENT",
+                        "a1_reveal_ref": freeze["a1_reveal_ref"],
+                        "a1_label_ref": freeze["a1_label_ref"],
+                    }
+                )
+            if case["primary_event_id"] is not None:
+                primary_event_id = case["primary_event_id"]
+                freeze = a1_freezes[primary_event_id]
+                a1_label = _referenced_value(
+                    loaded,
+                    "a1_label",
+                    freeze["a1_label_relative_path"],
+                )
+                primary_roster.append(
+                    {
+                        "case_id": case["case_id"],
+                        "adjudicated_event_id": primary_event_id,
+                        "primary_uacf_d_positive": a1_label[
+                            "primary_uacf_d_positive"
+                        ],
+                        "a1_label_ref": freeze["a1_label_ref"],
+                    }
+                )
+            if case["case_status"] in ("unresolved", "typed_invalid"):
+                missingness_roster.append(
+                    {
+                        "case_id": case["case_id"],
+                        "raw_label_ids": case["raw_label_ids"],
+                        "missingness_type": (
+                            "UNRESOLVED_ADJUDICATION"
+                            if case["case_status"] == "unresolved"
+                            else "TYPED_INVALID_DISABLED"
+                        ),
+                        "primary_row_present": False,
+                    }
+                )
+    rosters = {
+        "R_raw": raw_roster,
+        "C_cases": case_roster,
+        "P_a1_paths": path_roster,
+        "E_primary_rows": primary_roster,
+        "M_missingness": missingness_roster,
+        "agreement": agreement_roster,
+        "agreement_completeness": (
+            "NOT_ESTABLISHED_NO_FROZEN_CASE_MATCHER"
+        ),
+        "counts": {
+            "R_raw": len(raw_roster),
+            "C_cases": len(case_roster),
+            "P_a1_paths": len(path_roster),
+            "E_primary_rows": len(primary_roster),
+            "M_missingness": len(missingness_roster),
+            "agreement": len(agreement_roster),
+        },
+    }
+    return roots, events, rosters
 
 
 def _decorate_full_block_result(
@@ -7157,6 +7511,9 @@ def _decorate_full_block_result(
         result["derived_source_categories"] = {}
         result["authority_roots"] = {}
         result["canonical_adjudicated_events"] = []
+        result["measurement_rosters"] = {}
+        result["grounding_evidence"] = "NOT_AVAILABLE"
+        result["semantic_truth_claim"] = "NOT_EVALUATED"
         return result
     fixed = loaded["fixed"]
     result["frame_sha256"] = canonical_sha256(fixed["block_frame"])
@@ -7177,12 +7534,44 @@ def _decorate_full_block_result(
         (
             result["authority_roots"],
             result["canonical_adjudicated_events"],
+            result["measurement_rosters"],
         ) = _full_block_authority_projection(
             loaded, result["derived_source_categories"]
         )
+        grounding_modes = {
+            item["grounding_mode"]
+            for item in result["canonical_adjudicated_events"]
+        }
+        if grounding_modes == {"mechanical"}:
+            result["grounding_evidence"] = (
+                "SYNTHETIC_MECHANICAL_GROUNDING"
+            )
+            result["semantic_truth_claim"] = (
+                "SYNTHETIC_TYPED_CLAIM_ONLY"
+            )
+        elif grounding_modes == {"blinded_human"}:
+            result["grounding_evidence"] = (
+                "HUMAN_ADJUDICATED_EVIDENCE_AUTHORITY_PARTIAL"
+            )
+            result["semantic_truth_claim"] = (
+                "NOT_MECHANICALLY_VERIFIED"
+            )
+        elif grounding_modes:
+            result["grounding_evidence"] = (
+                "MIXED_SYNTHETIC_MECHANICAL_AND_HUMAN_AUTHORITY_PARTIAL"
+            )
+            result["semantic_truth_claim"] = (
+                "PARTIAL_SYNTHETIC_TYPED_CLAIM_ONLY"
+            )
+        else:
+            result["grounding_evidence"] = "NO_ADJUDICATED_EVENTS"
+            result["semantic_truth_claim"] = "NOT_EVALUATED"
     else:
         result["authority_roots"] = {}
         result["canonical_adjudicated_events"] = []
+        result["measurement_rosters"] = {}
+        result["grounding_evidence"] = "NOT_AVAILABLE"
+        result["semantic_truth_claim"] = "NOT_EVALUATED"
     result["bundle_sha256"] = canonical_sha256(
         [
             "stage0f-full-block-bundle-v1",

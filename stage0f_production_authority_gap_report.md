@@ -75,9 +75,13 @@ archived HTML bytes
 允许的结论：
 
 ```text
-REAL_ARCHIVED_SOURCE_PROJECTION_VERIFIED
+LOCAL_ARCHIVED_BYTES_LITERAL_PROJECTION_VERIFIED
+SOURCE_ORIGIN_AUTHENTICITY_UNVERIFIED
+LOCAL_MANIFEST_SELF_SEALED
+TRUSTED_CAPTURE_TIME_MISSING
 OBSERVATION_ASSET_AUTHORITY_PARTIAL
 PRODUCTION_AUTHORITY_INCOMPLETE
+NO BLOCK A
 ```
 
 禁止写成完整 environment observation fidelity。
@@ -195,14 +199,15 @@ iff
 
 ## 5. 最小实现顺序
 
-1. Stage A v2：修复 X62 disagreement censoring 与 X63 grounding overclaim；
-2. 真实 archived HTML projection adapter；
-3. captured catalog universe adapter；
-4. forward-only temporal receipt infrastructure；
-5. forward-only ACL/access/principal/role infrastructure；
-6. release task/evaluator/screenshot authority；
-7. integrated production full-block validator；
-8. 最后才接 bounds production mode。
+1. 冻结 A0 raw-case matcher；当前 Stage A v2 的 94/94 synthetic mechanics 尚不能建立自然 case denominator；
+2. 建立双人独立 human evidence-entailment records 与外部 raw-roster/time/access/role receipts；
+3. 将当前 local archived HTML projection adapter 接到 screenshot、initial observation、task/evaluator 与 source-origin authority；
+4. captured catalog universe adapter；
+5. forward-only temporal receipt infrastructure；
+6. forward-only ACL/access/principal/role infrastructure；
+7. release task/evaluator/screenshot authority；
+8. integrated production full-block validator；
+9. 最后才接 bounds production mode。
 
 不能先把 synthetic bounds 接到真实数据再补 authority；那只会把内部一致性包装成 research evidence。
 
@@ -210,7 +215,7 @@ iff
 
 | 对象 | 裁决 |
 |---|---|
-| archived HTML → literal replay projection | OFFLINE IMPLEMENTABLE |
+| current local archived HTML bytes → literal replay projection | VERIFIED FOR LOCAL BYTES ONLY |
 | captured catalog → 648/492 frame | OFFLINE IMPLEMENTABLE |
 | real temporal precedence for existing history | NOT RECOVERABLE POST HOC |
 | complete access/identity/role proof for existing history | NOT RECOVERABLE POST HOC |

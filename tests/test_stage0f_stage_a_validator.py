@@ -152,7 +152,7 @@ class SyntheticUnit:
             "schema_version": V.SCHEMA_VERSION,
             "canonicalization": V.CANONICALIZATION,
             "artifact_id": "a0-input-001",
-            "source_protocol": "stage0f_osworld2_natural_burden_preregistration.md@v0.5",
+            "source_protocol": "stage0f_osworld2_natural_burden_preregistration.md@v0.6",
             "unit_alias": "U-ABCDEF012345",
             "coordinator_envelope_commitment_sha256": V.canonical_sha256(
                 self.artifacts["coordinator_envelope"]
@@ -245,6 +245,11 @@ class SyntheticUnit:
             "supporting_a0_raw_label_ids": supporting_ids,
         }
         primary = p_old_status == "pre_update_frozen"
+        component_case_id = V.block_a0_case_id(
+            "U-ABCDEF012345",
+            self.artifacts["a0_input"]["boundary_location_id"],
+            supporting_ids,
+        )
         self.artifacts["a0_label"] = {
             "artifact_type": "a0_label",
             "schema_version": V.SCHEMA_VERSION,
@@ -294,7 +299,13 @@ class SyntheticUnit:
             "boundary_location_id": self.artifacts["a0_input"][
                 "boundary_location_id"
             ],
+            "case_id": component_case_id,
             "supporting_a0_raw_label_ids": supporting_ids,
+            "adjudication_mode": "consensus",
+            "grounding_mode": "blinded_human",
+            "evidence_class": "HUMAN_ADJUDICATED_EVIDENCE",
+            "semantic_verification": "NOT_MECHANICALLY_VERIFIED",
+            "mechanical_grounding_contract": None,
             "required_action_spec": None,
             "adjudicated_event_preimage": preimage,
             "adjudicated_event_id": V.adjudicated_event_id(preimage),
@@ -674,8 +685,10 @@ class SyntheticFullBlock:
     """Synthetic full-block mechanics only; never research evidence."""
 
     def __init__(self, root: Path, event_count: int = 2) -> None:
-        if event_count not in (0, 2):
-            raise ValueError("synthetic builder supports zero or two events")
+        if event_count not in (0, 1, 2):
+            raise ValueError(
+                "synthetic builder supports zero, one, or two events"
+            )
         self.root = root
         self.root.mkdir(parents=True, exist_ok=True)
         self.component = root / "component"
@@ -1123,6 +1136,7 @@ class SyntheticFullBlock:
             }
             container_events = []
             dispositions = []
+            case_roster = []
             if ordinal == 1 and self.event_count:
                 for event_index in range(1, self.event_count + 1):
                     base_label = copy.deepcopy(
@@ -1132,6 +1146,11 @@ class SyntheticFullBlock:
                         base_label["p_new"][
                             "proposition_id"
                         ] = "PROP-ANOTHER-NEW-STATE"
+                    grounding_mode = (
+                        "mechanical"
+                        if event_index == 1
+                        else "blinded_human"
+                    )
                     raw_payload = {
                         "p_old_proposition_id": base_label["p_old"][
                             "proposition_id"
@@ -1151,6 +1170,7 @@ class SyntheticFullBlock:
                         "boundary_type": base_label[
                             "adjudicated_event_preimage"
                         ]["boundary_type"],
+                        "grounding_mode": grounding_mode,
                     }
                     support_ids = []
                     support_raws = []
@@ -1179,6 +1199,55 @@ class SyntheticFullBlock:
                     self._retarget_a0_label(
                         label, a0_input, event_index, support_ids
                     )
+                    if event_index == 2:
+                        label["p_new"][
+                            "proposition_id"
+                        ] = "PROP-ANOTHER-NEW-STATE"
+                        label["adjudicated_event_preimage"][
+                            "p_new_proposition_id"
+                        ] = "PROP-ANOTHER-NEW-STATE"
+                        label["adjudicated_event_id"] = (
+                            V.adjudicated_event_id(
+                                label[
+                                    "adjudicated_event_preimage"
+                                ]
+                            )
+                        )
+                    case_id = V.block_a0_case_id(
+                        self.unit_alias,
+                        prefix["boundary_location_id"],
+                        support_ids,
+                    )
+                    label["case_id"] = case_id
+                    label["adjudication_mode"] = "consensus"
+                    label["grounding_mode"] = grounding_mode
+                    if grounding_mode == "mechanical":
+                        label["evidence_class"] = (
+                            "MECHANICALLY_VERIFIED_TYPED_CLAIM"
+                        )
+                        label["semantic_verification"] = (
+                            "MECHANICALLY_VERIFIED"
+                        )
+                        label["mechanical_grounding_contract"] = (
+                            V.synthetic_mechanical_grounding_contract(
+                                a0_input,
+                                label,
+                                coordinator["source_snapshot"][
+                                    "raw_response_sha256"
+                                ],
+                                V.artifact_ref(raw_trajectory)[
+                                    "sha256"
+                                ],
+                            )
+                        )
+                    else:
+                        label["evidence_class"] = (
+                            "HUMAN_ADJUDICATED_EVIDENCE"
+                        )
+                        label["semantic_verification"] = (
+                            "NOT_MECHANICALLY_VERIFIED"
+                        )
+                        label["mechanical_grounding_contract"] = None
                     event_id = label["adjudicated_event_id"]
                     label_path = (
                         location_dir
@@ -1189,11 +1258,15 @@ class SyntheticFullBlock:
                     container_events.append(
                         {
                             "adjudicated_event_id": event_id,
+                            "case_id": case_id,
                             "a0_label_ref": V.artifact_ref(label),
                             "a0_label_relative_path": self._relative(
                                 label_path
                             ),
                             "supporting_a0_raw_label_ids": support_ids,
+                            "adjudication_mode": "consensus",
+                            "grounding_mode": grounding_mode,
+                            "analysis_role": "primary",
                             "raw_support_adjudication": (
                                 V.expected_raw_support_adjudication(
                                     label, support_raws
@@ -1207,10 +1280,26 @@ class SyntheticFullBlock:
                     dispositions.extend(
                         {
                             "a0_raw_label_id": raw_id,
+                            "case_id": case_id,
                             "disposition": "adjudicated_event",
+                            "adjudication_mode": "consensus",
                             "adjudicated_event_id": event_id,
                         }
                         for raw_id in support_ids
+                    )
+                    case_roster.append(
+                        {
+                            "case_id": case_id,
+                            "raw_label_ids": support_ids,
+                            "adjudication_mode": "consensus",
+                            "case_status": "resolved_event",
+                            "event_ids": [event_id],
+                            "required_a1_event_ids": [event_id],
+                            "primary_event_id": event_id,
+                            "typed_invalid_raw_label_ids": [],
+                            "agreement_status": "raw_exact_agreement",
+                            "frozen_at": label["frozen_at"],
+                        }
                     )
                     reveal = copy.deepcopy(
                         self.unit.artifacts["a1_reveal"]
@@ -1293,7 +1382,10 @@ class SyntheticFullBlock:
                 "a0_input_ref": V.artifact_ref(a0_input),
                 "a0_submissions_ref": V.artifact_ref(raw_submissions),
                 "raw_label_dispositions": dispositions,
+                "case_roster": case_roster,
                 "events": container_events,
+                "independent_path_groups": [],
+                "unresolved_records": [],
                 "adjudicator_alias": "adjudicator-a0",
                 "frozen_at": "2026-07-28T09:02:10+08:00",
             }
@@ -1326,9 +1418,24 @@ class SyntheticFullBlock:
                     "adjudicated_event_id": item[
                         "adjudicated_event_id"
                     ],
+                    "case_id": item["case_id"],
                     "supporting_a0_raw_label_ids": item[
                         "supporting_a0_raw_label_ids"
                     ],
+                    "adjudication_mode": item["adjudication_mode"],
+                    "grounding_mode": item["grounding_mode"],
+                    "analysis_role": item["analysis_role"],
+                    "evidence_class": next(
+                        artifact["label"]["evidence_class"]
+                        for artifact in self.a1_artifacts
+                        if artifact["event_id"]
+                        == item["adjudicated_event_id"]
+                    ),
+                    "raw_support_adjudication_sha256": (
+                        V.canonical_sha256(
+                            item["raw_support_adjudication"]
+                        )
+                    ),
                     "frozen_at": next(
                         artifact["label"]["frozen_at"]
                         for artifact in self.a1_artifacts
@@ -1352,10 +1459,16 @@ class SyntheticFullBlock:
                         raw_submissions
                     ),
                     "a0_raw_label_ids": raw_ids,
+                    "raw_label_dispositions": copy.deepcopy(
+                        dispositions
+                    ),
+                    "case_roster": copy.deepcopy(case_roster),
                     "a0_adjudication_container_ref": V.artifact_ref(
                         adjudication
                     ),
                     "adjudicated_events": event_freezes,
+                    "independent_path_groups": [],
+                    "unresolved_records": [],
                     "prefix_chain_tip_sha256": a0_input[
                         "prefix_chain_tip_sha256"
                     ],
@@ -1772,6 +1885,89 @@ class SyntheticFullBlock:
         gate["exposure_event_count"] = len(self.exposure_events)
         gate["exposure_chain_tip_sha256"] = previous
 
+    def _negative_fixture_raw_support_record(
+        self,
+        label: Dict[str, Any],
+        support_raws: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """Build a schema-valid but semantically invalid red-team record."""
+
+        aligned = copy.deepcopy(label)
+        baseline = V.a0_raw_semantic_projection(
+            support_raws[0]["semantic_payload"]
+        )
+        aligned["p_old"]["proposition_id"] = baseline[
+            "p_old_proposition_id"
+        ]
+        aligned["p_new"]["proposition_id"] = baseline[
+            "p_new_proposition_id"
+        ]
+        pointer = copy.deepcopy(
+            aligned["p_new"]["evidence_pointer"]
+        )
+        aligned["update_source_evidence"] = [
+            {"label": source, "evidence_pointer": copy.deepcopy(pointer)}
+            for source in baseline["update_source_labels"]
+        ]
+        aligned["normative_action_difference"] = baseline[
+            "normative_action_difference"
+        ]
+        aligned["affected_obligation_ids"] = baseline[
+            "affected_obligation_ids"
+        ]
+        aligned["adjudicated_event_preimage"][
+            "boundary_type"
+        ] = baseline["boundary_type"]
+        transformed: set[str] = set()
+        raw_source_union = V.utf8_sorted(
+            {
+                source
+                for raw in support_raws
+                for source in raw["semantic_payload"][
+                    "update_source_labels"
+                ]
+            }
+        )
+        if (
+            label["adjudication_mode"]
+            == "blinded_human_resolution"
+            and raw_source_union == V.a0_label_source_projection(label)
+        ):
+            transformed.add("update_source_labels")
+        record = V.expected_raw_support_adjudication(
+            aligned,
+            support_raws,
+            deterministic_transform_fields=transformed,
+        )
+        final_projection = V.a0_label_semantic_projection(label)
+        raw_projections = {
+            raw["a0_raw_label_id"]: V.a0_raw_semantic_projection(
+                raw["semantic_payload"]
+            )
+            for raw in support_raws
+        }
+        record["adjudicated_semantic_projection_sha256"] = (
+            V.canonical_sha256(final_projection)
+        )
+        for resolution in record["field_resolutions"]:
+            field = resolution["field"]
+            resolution["resolved_value"] = final_projection[field]
+            resolution["resolved_value_sha256"] = V.canonical_sha256(
+                final_projection[field]
+            )
+            if resolution["resolution_type"] == "select_raw_value":
+                matches = [
+                    raw_id
+                    for raw_id, projection in raw_projections.items()
+                    if projection[field] == final_projection[field]
+                ]
+                resolution["selected_raw_label_id"] = (
+                    matches[0]
+                    if matches
+                    else support_raws[0]["a0_raw_label_id"]
+                )
+        return record
+
     def reconcile_event_raw_support(
         self,
         artifact: Dict[str, Any],
@@ -1793,6 +1989,7 @@ class SyntheticFullBlock:
         old_support_ids = set(
             container_event["supporting_a0_raw_label_ids"]
         )
+        old_case_id = container_event["case_id"]
         id_map: Dict[str, str] = {}
         support_raws: List[Dict[str, Any]] = []
         submissions = location["submissions"]
@@ -1815,7 +2012,13 @@ class SyntheticFullBlock:
         if set(id_map) != old_support_ids:
             raise AssertionError("event support roster is incomplete")
         support_ids = V.utf8_sorted(id_map.values())
+        new_case_id = V.block_a0_case_id(
+            self.unit_alias,
+            artifact["boundary_location_id"],
+            support_ids,
+        )
         label = artifact["label"]
+        label["case_id"] = new_case_id
         label["supporting_a0_raw_label_ids"] = support_ids
         label["adjudicated_event_preimage"][
             "supporting_a0_raw_label_ids"
@@ -1825,21 +2028,60 @@ class SyntheticFullBlock:
         )
         label["adjudicated_event_id"] = new_event_id
         container_event["adjudicated_event_id"] = new_event_id
+        container_event["case_id"] = new_case_id
         container_event["supporting_a0_raw_label_ids"] = support_ids
-        container_event["raw_support_adjudication"] = (
-            V.expected_raw_support_adjudication(label, support_raws)
-        )
+        transformed_fields: set[str] = set()
+        if label["adjudication_mode"] == "blinded_human_resolution":
+            raw_source_union = V.utf8_sorted(
+                {
+                    source
+                    for raw in support_raws
+                    for source in raw["semantic_payload"][
+                        "update_source_labels"
+                    ]
+                }
+            )
+            if raw_source_union == V.a0_label_source_projection(label):
+                transformed_fields.add("update_source_labels")
+        try:
+            container_event["raw_support_adjudication"] = (
+                V.expected_raw_support_adjudication(
+                    label,
+                    support_raws,
+                    deterministic_transform_fields=transformed_fields,
+                )
+            )
+        except ValueError:
+            container_event["raw_support_adjudication"] = (
+                self._negative_fixture_raw_support_record(
+                    label, support_raws
+                )
+            )
         for disposition in location["adjudication"][
             "raw_label_dispositions"
         ]:
             raw_id = disposition["a0_raw_label_id"]
             if raw_id in id_map:
                 disposition["a0_raw_label_id"] = id_map[raw_id]
+                disposition["case_id"] = new_case_id
             if (
                 disposition.get("adjudicated_event_id")
                 == old_event_id
             ):
                 disposition["adjudicated_event_id"] = new_event_id
+        case = next(
+            item
+            for item in location["adjudication"]["case_roster"]
+            if item["case_id"] == old_case_id
+        )
+        case["case_id"] = new_case_id
+        case["raw_label_ids"] = support_ids
+        case["event_ids"] = [new_event_id]
+        case["required_a1_event_ids"] = [new_event_id]
+        case["primary_event_id"] = new_event_id
+        case["agreement_status"] = V.raw_case_agreement_status(
+            support_raws
+        )
 
         freeze = next(
             item
@@ -1860,7 +2102,13 @@ class SyntheticFullBlock:
             if item["adjudicated_event_id"] == old_event_id
         )
         freeze_event["adjudicated_event_id"] = new_event_id
+        freeze_event["case_id"] = new_case_id
         freeze_event["supporting_a0_raw_label_ids"] = support_ids
+        freeze_event["raw_support_adjudication_sha256"] = (
+            V.canonical_sha256(
+                container_event["raw_support_adjudication"]
+            )
+        )
         freeze_event["frozen_at"] = label["frozen_at"]
         a1_freeze = next(
             item
@@ -1916,6 +2164,46 @@ class SyntheticFullBlock:
     ) -> None:
         if len(labels_by_submission) != 2:
             raise AssertionError("two source-label submissions required")
+        location = next(
+            item
+            for item in self.location_artifacts
+            if item["a0_input"]["boundary_location_id"]
+            == artifact["boundary_location_id"]
+        )
+        container_event = next(
+            event
+            for event in location["adjudication"]["events"]
+            if event["adjudicated_event_id"] == artifact["event_id"]
+        )
+        mode = (
+            "consensus"
+            if labels_by_submission[0] == labels_by_submission[1]
+            else "blinded_human_resolution"
+        )
+        artifact["label"]["adjudication_mode"] = mode
+        artifact["label"]["grounding_mode"] = "blinded_human"
+        artifact["label"]["evidence_class"] = (
+            "HUMAN_ADJUDICATED_EVIDENCE"
+        )
+        artifact["label"]["semantic_verification"] = (
+            "NOT_MECHANICALLY_VERIFIED"
+        )
+        artifact["label"]["mechanical_grounding_contract"] = None
+        container_event["adjudication_mode"] = mode
+        container_event["grounding_mode"] = "blinded_human"
+        case = next(
+            item
+            for item in location["adjudication"]["case_roster"]
+            if item["case_id"] == container_event["case_id"]
+        )
+        case["adjudication_mode"] = mode
+        for disposition in location["adjudication"][
+            "raw_label_dispositions"
+        ]:
+            if disposition.get("adjudicated_event_id") == artifact[
+                "event_id"
+            ]:
+                disposition["adjudication_mode"] = mode
 
         def replace_sources(
             submission_index: int,
@@ -1924,8 +2212,482 @@ class SyntheticFullBlock:
             payload["update_source_labels"] = copy.deepcopy(
                 labels_by_submission[submission_index]
             )
+            payload["grounding_mode"] = "blinded_human"
 
         self.mutate_event_raw_payloads(artifact, replace_sources)
+
+    def make_blinded_human_pnew_resolution(
+        self,
+        artifact: Dict[str, Any],
+    ) -> None:
+        """Create one genuine raw disagreement resolved to raw path zero."""
+
+        location = next(
+            item
+            for item in self.location_artifacts
+            if item["a0_input"]["boundary_location_id"]
+            == artifact["boundary_location_id"]
+        )
+        container_event = next(
+            event
+            for event in location["adjudication"]["events"]
+            if event["adjudicated_event_id"] == artifact["event_id"]
+        )
+        artifact["label"]["adjudication_mode"] = (
+            "blinded_human_resolution"
+        )
+        artifact["label"]["grounding_mode"] = "blinded_human"
+        artifact["label"]["evidence_class"] = (
+            "HUMAN_ADJUDICATED_EVIDENCE"
+        )
+        artifact["label"]["semantic_verification"] = (
+            "NOT_MECHANICALLY_VERIFIED"
+        )
+        artifact["label"]["mechanical_grounding_contract"] = None
+        container_event["adjudication_mode"] = (
+            "blinded_human_resolution"
+        )
+        container_event["grounding_mode"] = "blinded_human"
+        case = next(
+            item
+            for item in location["adjudication"]["case_roster"]
+            if item["case_id"] == container_event["case_id"]
+        )
+        case["adjudication_mode"] = "blinded_human_resolution"
+        for disposition in location["adjudication"][
+            "raw_label_dispositions"
+        ]:
+            if disposition.get("adjudicated_event_id") == artifact[
+                "event_id"
+            ]:
+                disposition["adjudication_mode"] = (
+                    "blinded_human_resolution"
+                )
+
+        def disagree(
+            submission_index: int,
+            payload: Dict[str, Any],
+        ) -> None:
+            payload["grounding_mode"] = "blinded_human"
+            if submission_index == 1:
+                payload["p_new_proposition_id"] = (
+                    "PROP-DISAGREED-NEW-STATE"
+                )
+
+        self.mutate_event_raw_payloads(artifact, disagree)
+
+    def split_event_into_independent_paths(
+        self,
+        artifact: Dict[str, Any],
+    ) -> None:
+        """Split one disputed case into two explicit single-support paths."""
+
+        self.make_blinded_human_pnew_resolution(artifact)
+        location = next(
+            item
+            for item in self.location_artifacts
+            if item["a0_input"]["boundary_location_id"]
+            == artifact["boundary_location_id"]
+        )
+        adjudication = location["adjudication"]
+        old_event_id = artifact["event_id"]
+        event = next(
+            item
+            for item in adjudication["events"]
+            if item["adjudicated_event_id"] == old_event_id
+        )
+        case = next(
+            item
+            for item in adjudication["case_roster"]
+            if item["case_id"] == event["case_id"]
+        )
+        case_id = case["case_id"]
+        raw_by_id = {
+            raw["a0_raw_label_id"]: raw
+            for submission in location["submissions"]["submissions"]
+            for raw in submission["raw_labels"]
+        }
+        ordered_raw_ids = V.utf8_sorted(
+            event["supporting_a0_raw_label_ids"]
+        )
+        primary_raw_id = next(
+            raw_id
+            for raw_id in ordered_raw_ids
+            if raw_by_id[raw_id]["semantic_payload"][
+                "p_new_proposition_id"
+            ]
+            == artifact["label"]["p_new"]["proposition_id"]
+        )
+        secondary_raw_id = next(
+            raw_id
+            for raw_id in ordered_raw_ids
+            if raw_id != primary_raw_id
+        )
+        path_group_id = V.canonical_sha256(
+            ["stage0f-independent-path-group-v1", case_id]
+        )
+
+        def retarget_path(
+            target: Dict[str, Any],
+            raw_id: str,
+            analysis_role: str,
+            suffix: str,
+        ) -> Dict[str, Any]:
+            raw = raw_by_id[raw_id]
+            label = target["label"]
+            payload = raw["semantic_payload"]
+            label["artifact_id"] = "a0-label-independent-%s" % suffix
+            label["p_old"]["proposition_id"] = payload[
+                "p_old_proposition_id"
+            ]
+            label["p_new"]["proposition_id"] = payload[
+                "p_new_proposition_id"
+            ]
+            label["normative_action_difference"] = payload[
+                "normative_action_difference"
+            ]
+            label["affected_obligation_ids"] = V.utf8_sorted(
+                payload["affected_obligation_ids"]
+            )
+            label["supporting_a0_raw_label_ids"] = [raw_id]
+            label["case_id"] = case_id
+            label["adjudication_mode"] = "independent_paths"
+            label["grounding_mode"] = "blinded_human"
+            label["evidence_class"] = "HUMAN_ADJUDICATED_EVIDENCE"
+            label["semantic_verification"] = (
+                "NOT_MECHANICALLY_VERIFIED"
+            )
+            label["mechanical_grounding_contract"] = None
+            preimage = label["adjudicated_event_preimage"]
+            preimage["p_old_proposition_id"] = payload[
+                "p_old_proposition_id"
+            ]
+            preimage["p_new_proposition_id"] = payload[
+                "p_new_proposition_id"
+            ]
+            preimage["normative_action_difference_sha256"] = sha_text(
+                payload["normative_action_difference"]
+            )
+            preimage["sorted_obligation_ids"] = V.utf8_sorted(
+                payload["affected_obligation_ids"]
+            )
+            preimage["boundary_type"] = payload["boundary_type"]
+            preimage["supporting_a0_raw_label_ids"] = [raw_id]
+            event_id = V.adjudicated_event_id(preimage)
+            label["adjudicated_event_id"] = event_id
+            path_id = V.block_a0_independent_path_id(
+                case_id, [raw_id]
+            )
+            target["event_id"] = event_id
+            target["reveal"]["artifact_id"] = (
+                "a1-reveal-independent-%s" % suffix
+            )
+            target["reveal"]["adjudicated_event_id"] = event_id
+            target["a1_label"]["artifact_id"] = (
+                "a1-label-independent-%s" % suffix
+            )
+            target["a1_label"]["adjudicated_event_id"] = event_id
+            return {
+                "adjudicated_event_id": event_id,
+                "case_id": case_id,
+                "a0_label_ref": V.artifact_ref(label),
+                "a0_label_relative_path": self._relative(
+                    target["label_path"]
+                ),
+                "supporting_a0_raw_label_ids": [raw_id],
+                "adjudication_mode": "independent_paths",
+                "independent_path_group_id": path_group_id,
+                "independent_path_id": path_id,
+                "grounding_mode": "blinded_human",
+                "analysis_role": analysis_role,
+                "raw_support_adjudication": (
+                    V.expected_raw_support_adjudication(
+                        label, [raw]
+                    )
+                ),
+                "source_resolution": {"status": "identified"},
+            }
+
+        secondary = copy.deepcopy(artifact)
+        secondary["label_path"] = artifact["label_path"].with_name(
+            "a0_label_independent_secondary.json"
+        )
+        secondary["reveal_path"] = artifact["reveal_path"].with_name(
+            "a1_reveal_independent_secondary.json"
+        )
+        secondary["a1_label_path"] = artifact[
+            "a1_label_path"
+        ].with_name("a1_label_independent_secondary.json")
+        secondary["reveal"]["revealed_at"] = (
+            "2026-07-28T09:04:10+08:00"
+        )
+        secondary["a1_label"]["frozen_at"] = (
+            "2026-07-28T09:05:10+08:00"
+        )
+        primary_event = retarget_path(
+            artifact, primary_raw_id, "primary", "primary"
+        )
+        secondary_event = retarget_path(
+            secondary,
+            secondary_raw_id,
+            "sensitivity_only",
+            "secondary",
+        )
+        adjudication["events"] = [
+            item
+            for item in adjudication["events"]
+            if item["adjudicated_event_id"] != old_event_id
+        ] + [primary_event, secondary_event]
+        dispositions = []
+        for raw_id, path_event in (
+            (primary_raw_id, primary_event),
+            (secondary_raw_id, secondary_event),
+        ):
+            dispositions.append(
+                {
+                    "a0_raw_label_id": raw_id,
+                    "case_id": case_id,
+                    "disposition": "adjudicated_event",
+                    "adjudication_mode": "independent_paths",
+                    "adjudicated_event_id": path_event[
+                        "adjudicated_event_id"
+                    ],
+                    "independent_path_group_id": path_group_id,
+                    "independent_path_id": path_event[
+                        "independent_path_id"
+                    ],
+                }
+            )
+        adjudication["raw_label_dispositions"] = [
+            item
+            for item in adjudication["raw_label_dispositions"]
+            if item["a0_raw_label_id"] not in set(ordered_raw_ids)
+        ] + dispositions
+        event_ids = [
+            primary_event["adjudicated_event_id"],
+            secondary_event["adjudicated_event_id"],
+        ]
+        path_ids = [
+            primary_event["independent_path_id"],
+            secondary_event["independent_path_id"],
+        ]
+        case.update(
+            {
+                "adjudication_mode": "independent_paths",
+                "case_status": "independent_unmerged_paths",
+                "event_ids": event_ids,
+                "required_a1_event_ids": event_ids,
+                "primary_event_id": event_ids[0],
+                "agreement_status": "raw_substantive_disagreement",
+                "independent_path_group_id": path_group_id,
+            }
+        )
+        adjudication["independent_path_groups"] = [
+            {
+                "path_group_id": path_group_id,
+                "case_id": case_id,
+                "adjudication_mode": "independent_paths",
+                "raw_label_ids": ordered_raw_ids,
+                "event_ids": event_ids,
+                "path_ids": path_ids,
+                "resolution_status": "independent_unmerged_paths",
+                "adjudicator_alias": "adjudicator-a0",
+                "resolution_rule": (
+                    "preserve_disputed_raws_as_independent_paths"
+                ),
+                "frozen_at": "2026-07-28T09:02:06+08:00",
+            }
+        ]
+        self.a1_artifacts.append(secondary)
+        a1_freezes = self.fixed["block_a1_barrier"]["event_freezes"]
+        old_freeze = next(
+            item
+            for item in a1_freezes
+            if item["adjudicated_event_id"] == old_event_id
+        )
+        primary_freeze = copy.deepcopy(old_freeze)
+        secondary_freeze = copy.deepcopy(old_freeze)
+        primary_freeze["adjudicated_event_id"] = event_ids[0]
+        primary_freeze["a1_reveal_relative_path"] = self._relative(
+            artifact["reveal_path"]
+        )
+        primary_freeze["a1_label_relative_path"] = self._relative(
+            artifact["a1_label_path"]
+        )
+        secondary_freeze["adjudicated_event_id"] = event_ids[1]
+        secondary_freeze["a1_reveal_relative_path"] = self._relative(
+            secondary["reveal_path"]
+        )
+        secondary_freeze["a1_label_relative_path"] = self._relative(
+            secondary["a1_label_path"]
+        )
+        secondary_freeze["a1_label_frozen_at"] = secondary[
+            "a1_label"
+        ]["frozen_at"]
+        secondary_freeze["reveal_atomicity"][
+            "entire_action_unit_revealed_at"
+        ] = secondary["reveal"]["revealed_at"]
+        a1_freezes[:] = [
+            item
+            for item in a1_freezes
+            if item["adjudicated_event_id"] != old_event_id
+        ] + [primary_freeze, secondary_freeze]
+        self.fixed["block_barrier"][
+            "expected_adjudicated_event_count"
+        ] += 1
+        self.fixed["block_a1_barrier"][
+            "expected_adjudicated_event_count"
+        ] += 1
+        self.refresh_full_links()
+
+    def convert_event_to_unresolved(
+        self,
+        artifact: Dict[str, Any],
+        singleton: bool = False,
+    ) -> None:
+        """Preserve a disputed raw case with no A1 or primary leakage."""
+
+        self.make_blinded_human_pnew_resolution(artifact)
+        location = next(
+            item
+            for item in self.location_artifacts
+            if item["a0_input"]["boundary_location_id"]
+            == artifact["boundary_location_id"]
+        )
+        adjudication = location["adjudication"]
+        event_id = artifact["event_id"]
+        event = next(
+            item
+            for item in adjudication["events"]
+            if item["adjudicated_event_id"] == event_id
+        )
+        case = next(
+            item
+            for item in adjudication["case_roster"]
+            if item["case_id"] == event["case_id"]
+        )
+        raw_ids = V.utf8_sorted(case["raw_label_ids"])
+        if singleton:
+            raw_ids = raw_ids[:1]
+            for submission in location["submissions"]["submissions"]:
+                submission["raw_labels"] = [
+                    raw
+                    for raw in submission["raw_labels"]
+                    if raw["a0_raw_label_id"] in raw_ids
+                ]
+            case["raw_label_ids"] = raw_ids
+            case["case_id"] = V.block_a0_case_id(
+                self.unit_alias,
+                artifact["boundary_location_id"],
+                raw_ids,
+            )
+        case_id = case["case_id"]
+        raw_by_id = {
+            raw["a0_raw_label_id"]: raw
+            for submission in location["submissions"]["submissions"]
+            for raw in submission["raw_labels"]
+        }
+        unresolved_id = V.canonical_sha256(
+            ["stage0f-unresolved-record-v1", case_id, raw_ids]
+        )
+        projections = {
+            raw_id: V.a0_raw_semantic_projection(
+                raw_by_id[raw_id]["semantic_payload"]
+            )
+            for raw_id in raw_ids
+        }
+        differing_fields = [
+            field
+            for field in V.A0_RAW_FIELDS
+            if len(
+                {
+                    V.canonical_sha256(projection[field])
+                    for projection in projections.values()
+                }
+            )
+            > 1
+        ]
+        if not differing_fields:
+            differing_fields = list(V.A0_RAW_FIELDS)
+        unresolved_fields = [
+            {
+                "field": field,
+                "raw_value_hashes": [
+                    {
+                        "a0_raw_label_id": raw_id,
+                        "value_sha256": V.canonical_sha256(
+                            projections[raw_id][field]
+                        ),
+                    }
+                    for raw_id in raw_ids
+                ],
+            }
+            for field in differing_fields
+        ]
+        adjudication["events"] = [
+            item
+            for item in adjudication["events"]
+            if item["adjudicated_event_id"] != event_id
+        ]
+        adjudication["raw_label_dispositions"] = [
+            {
+                "a0_raw_label_id": raw_id,
+                "case_id": case_id,
+                "disposition": "unresolved",
+                "adjudication_mode": "unresolved",
+                "unresolved_record_id": unresolved_id,
+                "decided_by": "adjudicator-a0",
+                "decision_rule": "preserve_unresolved_disagreement",
+                "decided_at": "2026-07-28T09:02:06+08:00",
+            }
+            for raw_id in raw_ids
+        ]
+        case.update(
+            {
+                "adjudication_mode": "unresolved",
+                "case_status": "unresolved",
+                "event_ids": [],
+                "required_a1_event_ids": [],
+                "primary_event_id": None,
+                "agreement_status": V.raw_case_agreement_status(
+                    [raw_by_id[raw_id] for raw_id in raw_ids]
+                ),
+                "unresolved_record_id": unresolved_id,
+                "frozen_at": "2026-07-28T09:02:06+08:00",
+            }
+        )
+        adjudication["unresolved_records"] = [
+            {
+                "unresolved_record_id": unresolved_id,
+                "case_id": case_id,
+                "adjudication_mode": "unresolved",
+                "raw_label_ids": raw_ids,
+                "unresolved_fields": unresolved_fields,
+                "reason_code": "ADJUDICATOR_ABSTAINED",
+                "adjudicator_alias": "adjudicator-a0",
+                "resolution_rule": "preserve_unresolved_disagreement",
+                "frozen_at": "2026-07-28T09:02:06+08:00",
+            }
+        ]
+        self.a1_artifacts[:] = [
+            item
+            for item in self.a1_artifacts
+            if item["event_id"] != event_id
+        ]
+        self.fixed["block_a1_barrier"]["event_freezes"] = [
+            item
+            for item in self.fixed["block_a1_barrier"][
+                "event_freezes"
+            ]
+            if item["adjudicated_event_id"] != event_id
+        ]
+        self.fixed["block_barrier"][
+            "expected_adjudicated_event_count"
+        ] -= 1
+        self.fixed["block_a1_barrier"][
+            "expected_adjudicated_event_count"
+        ] -= 1
+        self.refresh_full_links()
 
     def refresh_full_links(self) -> None:
         manifest = self.fixed["block_location_manifest"]
@@ -1986,6 +2748,51 @@ class SyntheticFullBlock:
             freeze["a0_adjudication_container_ref"] = V.artifact_ref(
                 item["adjudication"]
             )
+            freeze["a0_raw_label_ids"] = V.utf8_sorted(
+                raw["a0_raw_label_id"]
+                for submission in item["submissions"]["submissions"]
+                for raw in submission["raw_labels"]
+            )
+            freeze["raw_label_dispositions"] = copy.deepcopy(
+                item["adjudication"]["raw_label_dispositions"]
+            )
+            freeze["case_roster"] = copy.deepcopy(
+                item["adjudication"]["case_roster"]
+            )
+            freeze["independent_path_groups"] = copy.deepcopy(
+                item["adjudication"]["independent_path_groups"]
+            )
+            freeze["unresolved_records"] = copy.deepcopy(
+                item["adjudication"]["unresolved_records"]
+            )
+            freeze["adjudicated_events"] = [
+                {
+                    "adjudicated_event_id": event[
+                        "adjudicated_event_id"
+                    ],
+                    "case_id": event["case_id"],
+                    "supporting_a0_raw_label_ids": event[
+                        "supporting_a0_raw_label_ids"
+                    ],
+                    "adjudication_mode": event[
+                        "adjudication_mode"
+                    ],
+                    "grounding_mode": event["grounding_mode"],
+                    "analysis_role": event["analysis_role"],
+                    "evidence_class": a1_by_event[
+                        event["adjudicated_event_id"]
+                    ]["label"]["evidence_class"],
+                    "raw_support_adjudication_sha256": (
+                        V.canonical_sha256(
+                            event["raw_support_adjudication"]
+                        )
+                    ),
+                    "frozen_at": a1_by_event[
+                        event["adjudicated_event_id"]
+                    ]["label"]["frozen_at"],
+                }
+                for event in item["adjudication"]["events"]
+            ]
         barrier_hash = V.canonical_sha256(barrier)
         freeze_by_event = {
             item["adjudicated_event_id"]: item
@@ -2191,6 +2998,22 @@ class ValidatorTests(unittest.TestCase):
             len(result["canonical_adjudicated_events"]), 2
         )
         self.assertEqual(
+            result["grounding_evidence"],
+            "MIXED_SYNTHETIC_MECHANICAL_AND_HUMAN_AUTHORITY_PARTIAL",
+        )
+        self.assertEqual(
+            result["measurement_rosters"]["counts"]["R_raw"], 4
+        )
+        self.assertEqual(
+            result["measurement_rosters"]["counts"]["C_cases"], 2
+        )
+        self.assertEqual(
+            result["measurement_rosters"][
+                "agreement_completeness"
+            ],
+            "NOT_ESTABLISHED_NO_FROZEN_CASE_MATCHER",
+        )
+        self.assertEqual(
             len(
                 {
                     item["event_key_sha256"]
@@ -2227,6 +3050,382 @@ class ValidatorTests(unittest.TestCase):
                 (block.root / item["a1_label_relative_path"]).is_file()
             )
 
+    def test_consensus_synthetic_mechanical_grounding_pass(self) -> None:
+        block = self.full_block(1)
+        result = block.validate()
+        self.assertTrue(result["valid"], result)
+        self.assertEqual(
+            result["grounding_evidence"],
+            "SYNTHETIC_MECHANICAL_GROUNDING",
+        )
+        self.assertEqual(
+            result["semantic_truth_claim"],
+            "SYNTHETIC_TYPED_CLAIM_ONLY",
+        )
+
+    def test_x62_blinded_human_substantive_resolution_pass(self) -> None:
+        block = self.full_block(1)
+        artifact = block.a1_artifacts[0]
+        block.make_blinded_human_pnew_resolution(artifact)
+        block.refresh_full_links()
+        result = block.validate()
+        self.assertTrue(result["valid"], result)
+        event = next(
+            item
+            for location in block.location_artifacts
+            for item in location["adjudication"]["events"]
+            if item["adjudicated_event_id"] == artifact["event_id"]
+        )
+        p_new = next(
+            item
+            for item in event["raw_support_adjudication"][
+                "field_resolutions"
+            ]
+            if item["field"] == "p_new_proposition_id"
+        )
+        self.assertEqual(p_new["resolution_type"], "select_raw_value")
+        self.assertEqual(
+            result["grounding_evidence"],
+            "HUMAN_ADJUDICATED_EVIDENCE_AUTHORITY_PARTIAL",
+        )
+        self.assertEqual(
+            result["measurement_rosters"]["agreement"][0][
+                "agreement_status"
+            ],
+            "raw_substantive_disagreement",
+        )
+
+    def test_independent_single_support_paths_pass(self) -> None:
+        block = self.full_block(1)
+        artifact = block.a1_artifacts[0]
+        block.split_event_into_independent_paths(artifact)
+        result = block.validate()
+        self.assertTrue(result["valid"], result)
+        self.assertEqual(
+            result["measurement_rosters"]["counts"]["C_cases"], 1
+        )
+        self.assertEqual(
+            result["measurement_rosters"]["counts"]["P_a1_paths"], 2
+        )
+        self.assertEqual(
+            result["measurement_rosters"]["counts"]["E_primary_rows"], 1
+        )
+        roles = {
+            item["analysis_role"]
+            for item in result["measurement_rosters"]["P_a1_paths"]
+        }
+        self.assertEqual(roles, {"primary", "sensitivity_only"})
+
+    def test_unresolved_case_remains_in_missingness_pass(self) -> None:
+        block = self.full_block(1)
+        artifact = block.a1_artifacts[0]
+        block.convert_event_to_unresolved(artifact)
+        result = block.validate()
+        self.assertTrue(result["valid"], result)
+        self.assertEqual(
+            result["measurement_rosters"]["counts"],
+            {
+                "R_raw": 2,
+                "C_cases": 1,
+                "P_a1_paths": 0,
+                "E_primary_rows": 0,
+                "M_missingness": 1,
+                "agreement": 1,
+            },
+        )
+        self.assertEqual(
+            result["measurement_rosters"]["M_missingness"][0][
+                "missingness_type"
+            ],
+            "UNRESOLVED_ADJUDICATION",
+        )
+        self.assertEqual(
+            result["measurement_rosters"]["agreement"][0][
+                "agreement_status"
+            ],
+            "raw_substantive_disagreement",
+        )
+
+    def test_singleton_unresolved_preserves_one_sided_denominator_pass(
+        self,
+    ) -> None:
+        block = self.full_block(1)
+        artifact = block.a1_artifacts[0]
+        block.convert_event_to_unresolved(artifact, singleton=True)
+        result = block.validate()
+        self.assertTrue(result["valid"], result)
+        self.assertEqual(
+            result["measurement_rosters"]["counts"],
+            {
+                "R_raw": 1,
+                "C_cases": 1,
+                "P_a1_paths": 0,
+                "E_primary_rows": 0,
+                "M_missingness": 1,
+                "agreement": 1,
+            },
+        )
+        self.assertEqual(
+            result["measurement_rosters"]["agreement"][0][
+                "agreement_status"
+            ],
+            "single_support_no_agreement",
+        )
+        missingness = result["measurement_rosters"]["M_missingness"][0]
+        self.assertEqual(len(missingness["raw_label_ids"]), 1)
+        self.assertFalse(missingness["primary_row_present"])
+
+    def test_x63_unanimous_unsupported_mechanical(self) -> None:
+        block = self.full_block(1)
+        artifact = block.a1_artifacts[0]
+        artifact["label"]["p_new"]["proposition_id"] = (
+            "PROP-UNSUPPORTED-CLAIM"
+        )
+        artifact["label"]["adjudicated_event_preimage"][
+            "p_new_proposition_id"
+        ] = "PROP-UNSUPPORTED-CLAIM"
+
+        def unsupported(
+            _submission_index: int,
+            payload: Dict[str, Any],
+        ) -> None:
+            payload["p_new_proposition_id"] = (
+                "PROP-UNSUPPORTED-CLAIM"
+            )
+
+        block.mutate_event_raw_payloads(artifact, unsupported)
+        artifact["label"]["mechanical_grounding_contract"] = (
+            V.synthetic_mechanical_grounding_contract(
+                next(
+                    item["a0_input"]
+                    for item in block.location_artifacts
+                    if item["a0_input"]["boundary_location_id"]
+                    == artifact["boundary_location_id"]
+                ),
+                artifact["label"],
+                block.coordinator["source_snapshot"][
+                    "raw_response_sha256"
+                ],
+                V.artifact_ref(block.raw_trajectory)["sha256"],
+            )
+        )
+        block.refresh_full_links()
+        self.assert_case(
+            "x63_unanimous_unsupported_mechanical",
+            block.validate(),
+        )
+
+    def test_v2_r12_mechanical_pointer_only(self) -> None:
+        block = self.full_block(1)
+        artifact = block.a1_artifacts[0]
+        artifact["label"]["mechanical_grounding_contract"][
+            "predicate_projection_sha256"
+        ] = V.canonical_sha256(
+            artifact["label"]["p_new"]["evidence_pointer"]
+        )
+        block.refresh_full_links()
+        self.assert_case(
+            "v2_r12_mechanical_pointer_only", block.validate()
+        )
+
+    def test_v2_r02_raw_fanout(self) -> None:
+        block = self.full_block(2)
+        location = next(
+            item
+            for item in block.location_artifacts
+            if len(item["adjudication"]["case_roster"]) == 2
+        )
+        first, second = location["adjudication"]["case_roster"]
+        second["raw_label_ids"].append(first["raw_label_ids"][0])
+        block.refresh_full_links()
+        self.assert_case("v2_r02_raw_fanout", block.validate())
+
+    def test_v2_r06_path_denominator_loss(self) -> None:
+        block = self.full_block(2)
+        block.fixed["block_a1_barrier"]["event_freezes"].pop()
+        block.write()
+        self.assert_case(
+            "v2_r06_path_denominator_loss", block.validate()
+        )
+
+    def test_v2_r07_independent_primary_double_count(
+        self,
+    ) -> None:
+        block = self.full_block(1)
+        block.split_event_into_independent_paths(
+            block.a1_artifacts[0]
+        )
+        location = next(
+            item
+            for item in block.location_artifacts
+            if item["adjudication"]["events"]
+        )
+        sensitivity = next(
+            item
+            for item in location["adjudication"]["events"]
+            if item["analysis_role"] == "sensitivity_only"
+        )
+        sensitivity["analysis_role"] = "primary"
+        block.refresh_full_links()
+        self.assert_case(
+            "v2_r07_independent_primary_double_count",
+            block.validate(),
+        )
+
+    def test_v2_r09_unresolved_primary_leak(self) -> None:
+        block = self.full_block(1)
+        artifact = block.a1_artifacts[0]
+        old_event_id = artifact["event_id"]
+        block.convert_event_to_unresolved(artifact)
+        case = next(
+            case
+            for location in block.location_artifacts
+            for case in location["adjudication"]["case_roster"]
+            if case["case_status"] == "unresolved"
+        )
+        case["primary_event_id"] = old_event_id
+        block.refresh_full_links()
+        self.assert_case(
+            "v2_r09_unresolved_primary_leak", block.validate()
+        )
+
+    def test_v2_r10_post_adjudication_agreement_inflation(
+        self,
+    ) -> None:
+        block = self.full_block(1)
+        artifact = block.a1_artifacts[0]
+        block.make_blinded_human_pnew_resolution(artifact)
+        location = next(
+            item
+            for item in block.location_artifacts
+            if item["adjudication"]["events"]
+        )
+        event = location["adjudication"]["events"][0]
+        case = location["adjudication"]["case_roster"][0]
+        case["adjudication_mode"] = "consensus"
+        case["agreement_status"] = "raw_exact_agreement"
+        event["adjudication_mode"] = "consensus"
+        artifact["label"]["adjudication_mode"] = "consensus"
+        for disposition in location["adjudication"][
+            "raw_label_dispositions"
+        ]:
+            disposition["adjudication_mode"] = "consensus"
+        block.refresh_full_links()
+        self.assert_case(
+            "v2_r10_post_adjudication_agreement_inflation",
+            block.validate(),
+        )
+
+    def test_v2_r15_shared_a1_path_aliasing(self) -> None:
+        block = self.full_block(2)
+        first, second = block.fixed["block_a1_barrier"][
+            "event_freezes"
+        ]
+        second["a1_reveal_ref"] = copy.deepcopy(
+            first["a1_reveal_ref"]
+        )
+        second["a1_reveal_relative_path"] = first[
+            "a1_reveal_relative_path"
+        ]
+        second["a1_label_ref"] = copy.deepcopy(first["a1_label_ref"])
+        second["a1_label_relative_path"] = first[
+            "a1_label_relative_path"
+        ]
+        block.write()
+        self.assert_case(
+            "v2_r15_shared_a1_path_aliasing", block.validate()
+        )
+
+    def test_x64_rejected_event_denominator_erasure(self) -> None:
+        block = self.full_block(1)
+        artifact = block.a1_artifacts[0]
+        event_id = artifact["event_id"]
+        location = next(
+            item
+            for item in block.location_artifacts
+            if item["adjudication"]["events"]
+        )
+        adjudication = location["adjudication"]
+        case = adjudication["case_roster"][0]
+        raw_ids = case["raw_label_ids"]
+        adjudication["events"] = []
+        adjudication["raw_label_dispositions"] = [
+            {
+                "a0_raw_label_id": raw_id,
+                "case_id": case["case_id"],
+                "disposition": "rejected",
+                "adjudication_mode": "unresolved",
+                "rejection_reason_code": "OUT_OF_SCOPE_BY_FROZEN_CODEBOOK",
+                "rejection_evidence": {
+                    "rule_id": "synthetic-codebook-rule",
+                    "codebook_rule_sha256": digest("codebook-rule"),
+                    "evidence_sha256": digest(
+                        "rejection-evidence-" + raw_id
+                    ),
+                },
+                "decided_by": "adjudicator-a0",
+                "decision_rule": "synthetic_unverified_rejection",
+                "decided_at": "2026-07-28T09:02:06+08:00",
+            }
+            for raw_id in raw_ids
+        ]
+        case.update(
+            {
+                "adjudication_mode": "unresolved",
+                "case_status": "typed_invalid",
+                "event_ids": [],
+                "required_a1_event_ids": [],
+                "primary_event_id": None,
+                "typed_invalid_raw_label_ids": raw_ids,
+                "agreement_status": "typed_invalid_not_assessed",
+                "frozen_at": "2026-07-28T09:02:06+08:00",
+            }
+        )
+        block.a1_artifacts[:] = []
+        block.fixed["block_a1_barrier"]["event_freezes"] = []
+        block.fixed["block_barrier"][
+            "expected_adjudicated_event_count"
+        ] = 0
+        block.fixed["block_a1_barrier"][
+            "expected_adjudicated_event_count"
+        ] = 0
+        block.refresh_full_links()
+        self.assertNotEqual(event_id, "")
+        self.assert_case(
+            "x64_rejected_event_denominator_erasure",
+            block.validate(),
+        )
+
+    def test_v2_r04_frankenstein_resolution(
+        self,
+    ) -> None:
+        block = self.full_block(1)
+        artifact = block.a1_artifacts[0]
+        block.make_blinded_human_pnew_resolution(artifact)
+        label = artifact["label"]
+        label["affected_obligation_ids"] = ["O-SECONDARY"]
+        label["adjudicated_event_preimage"][
+            "sorted_obligation_ids"
+        ] = ["O-SECONDARY"]
+        for assessment in label["obligation_assessments"]:
+            assessment["affected"] = (
+                assessment["obligation_id"] == "O-SECONDARY"
+            )
+
+        def second_raw_obligation(
+            submission_index: int,
+            payload: Dict[str, Any],
+        ) -> None:
+            if submission_index == 1:
+                payload["affected_obligation_ids"] = ["O-SECONDARY"]
+
+        block.mutate_event_raw_payloads(
+            artifact, second_raw_obligation
+        )
+        block.refresh_full_links()
+        self.assert_case(
+            "v2_r04_frankenstein_resolution", block.validate()
+        )
     def test_e10_empty_submissions_no_event_location(self) -> None:
         block = self.full_block(0)
         result = block.validate()
@@ -2702,6 +3901,27 @@ class ValidatorTests(unittest.TestCase):
         artifact["label"]["frozen_at"] = (
             "2026-07-28T09:03:30+08:00"
         )
+        location = next(
+            item
+            for item in block.location_artifacts
+            if item["a0_input"]["boundary_location_id"]
+            == artifact["boundary_location_id"]
+        )
+        container_event = next(
+            item
+            for item in location["adjudication"]["events"]
+            if item["adjudicated_event_id"] == artifact["event_id"]
+        )
+        container_event["raw_support_adjudication"][
+            "resolved_at"
+        ] = artifact["label"]["frozen_at"]
+        for resolution in container_event[
+            "raw_support_adjudication"
+        ]["field_resolutions"]:
+            resolution["resolved_at"] = artifact["label"]["frozen_at"]
+        artifact["label"]["mechanical_grounding_contract"][
+            "frozen_at"
+        ] = artifact["label"]["frozen_at"]
         freeze = next(
             item
             for location in block.fixed["block_barrier"][
@@ -2744,12 +3964,14 @@ class ValidatorTests(unittest.TestCase):
             if event["adjudicated_event_id"] == artifact["event_id"]
         )
         self.assertEqual(
-            len(
-                container["raw_support_adjudication"][
-                    "disagreements"
-                ]
+            next(
+                item["resolution_type"]
+                for item in container[
+                    "raw_support_adjudication"
+                ]["field_resolutions"]
+                if item["field"] == "update_source_labels"
             ),
-            1,
+            "frozen_deterministic_transform",
         )
         block.refresh_full_links()
         block.write()
@@ -3174,6 +4396,11 @@ class ValidatorTests(unittest.TestCase):
             "block_entry_is_fail_closed_not_ready",
             "same_location_supports_multiple_semantic_event_ids",
             "synthetic_full_block_two_event_mechanics_pass",
+            "consensus_synthetic_mechanical_grounding_pass",
+            "x62_blinded_human_substantive_resolution_pass",
+            "independent_single_support_paths_pass",
+            "unresolved_case_remains_in_missingness_pass",
+            "singleton_unresolved_preserves_one_sided_denominator_pass",
             "e10_empty_submissions_no_event_location",
             "e34_world_and_task_goal_mixed",
             "valid_source_unknown_full_block",

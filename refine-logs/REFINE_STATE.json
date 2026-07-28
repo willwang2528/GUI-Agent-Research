@@ -1,7 +1,7 @@
 {
   "workflow": "aris-adapted-research-refine",
-  "phase": "round_6_stagea_v2_wip_test_migration",
-  "round": 6,
+  "phase": "round_7_case_matcher_and_external_authority_revise",
+  "round": 7,
   "review_agents": [
     "round4_protocol_redteam",
     "stagea_schema_impl",
@@ -13,14 +13,17 @@
     "bounds_round3_scientific_audit",
     "stagea_fresh_replay",
     "stagea_first_principles_critic",
-    "production_authority_gap_audit"
+    "production_authority_gap_audit",
+    "stagea_v2_adjudication_impl",
+    "stagea_v2_spec_redteam",
+    "archived_adapter_v11_review"
   ],
   "last_score": null,
-  "last_verdict": "BOUNDS_SYNTHETIC_ACCEPTED_STAGEA_PROTOCOL_REVISE_PRODUCTION_REJECTED",
-  "review_independence": "multi-round: fresh executable replay, root counterexample rebuttal, reviewer recantation, independent first-principles counterexample, and offline production-authority audit",
+  "last_verdict": "STAGEA_V2_SYNTHETIC_ACCEPT_LOCAL_BYTES_ACCEPT_PROTOCOL_REVISE_PRODUCTION_REJECTED",
+  "review_independence": "multi-round: implementation, independent executable spec red-team, R11 rebuttal and narrow repair, independent hash/replay acceptance, archived-source overclaim challenge, and independent v1.1 local-byte audit",
   "acceptance_status": "not_ready",
   "status": "in_progress",
-  "blocking_gate": "Stage A v2 schema and validator edits now encode the R/C/P/E/M direction, disagreement-preserving modes, and mechanical-versus-human grounding, but remain WIP: the old synthetic builders and fixtures have not migrated, so the 79-test Stage A suite currently has 70 failures and one error. X62-X64 and the R-series tests are not yet implemented. The real archived-HTML projection adapter passes 12 tests over 48 pages and 9138 steps, but its claim ceiling is PRODUCTION_AUTHORITY_INCOMPLETE / NO_BLOCK_A. Behavioral burden remains unmeasured.",
-  "next_artifact": "migrate Stage A synthetic builders and fixtures to v2; implement X62-X64 and R02/R04/R05/R06/R07/R09/R10/R12/R15; then run full validation and independent executable red-team before integrating the archived-source adapter",
-  "timestamp": "2026-07-28T13:03:24+08:00"
+  "blocking_gate": "Stage A v2 specified synthetic mechanics pass 94/94 Stage A tests, 104/104 combined tests, and 28/28 strict schemas after independent R11 review. They still lack a frozen raw-case matcher, dual independent human entailment records, and external raw-roster/time/access/role authority. The archived adapter passes 22/22 tests over 48 local pages and 9138 literal steps, but establishes only LOCAL_ARCHIVED_BYTES_LITERAL_PROJECTION_VERIFIED. Natural behavioral burden remains unmeasured.",
+  "next_artifact": "freeze the A0 raw-case matcher: candidate-edge universe, admissibility predicate, maximum-cardinality objective, deterministic tie-break, unmatched/singleton/both-zero rules, and pre-adjudication a-b-c agreement ledger with executable negative controls",
+  "timestamp": "2026-07-28T13:58:31+08:00"
 }
