@@ -1,7 +1,7 @@
 {
   "workflow": "aris-adapted-research-refine",
-  "phase": "round_5_synthetic_mechanics_accepted_production_measurement_not_ready",
-  "round": 5,
+  "phase": "round_6_stagea_v2_wip_test_migration",
+  "round": 6,
   "review_agents": [
     "round4_protocol_redteam",
     "stagea_schema_impl",
@@ -10,14 +10,17 @@
     "final_release_redteam",
     "fullblock_stagea_impl",
     "bounds_certificate_impl",
-    "bounds_round3_scientific_audit"
+    "bounds_round3_scientific_audit",
+    "stagea_fresh_replay",
+    "stagea_first_principles_critic",
+    "production_authority_gap_audit"
   ],
   "last_score": null,
-  "last_verdict": "SYNTHETIC_MECHANICS_ACCEPTED_PRODUCTION_MEASUREMENT_REJECTED",
-  "review_independence": "mixed: implementation agents plus an independent bounded bounds replay; Stage A X58-X60 still awaits a fresh independent replay",
+  "last_verdict": "BOUNDS_SYNTHETIC_ACCEPTED_STAGEA_PROTOCOL_REVISE_PRODUCTION_REJECTED",
+  "review_independence": "multi-round: fresh executable replay, root counterexample rebuttal, reviewer recantation, independent first-principles counterexample, and offline production-authority audit",
   "acceptance_status": "not_ready",
   "status": "in_progress",
-  "blocking_gate": "Round 5 accepts the bounds/certificate implementation only as synthetic mechanics after 33/33 root tests and a 22/22 independent bounded replay. Full-block Stage A X58-X60 fixes pass 79/79 implementation tests and 27/27 strict schema compilation but still await fresh independent replay. Production remains fail-closed because published-source fidelity, nonrollback temporal commitments, trusted access and role authorities, release-tagged mappings, real obligation and identity projections, proof semantics, and a trusted large-world solver are absent. Python 3.12.13 exists, but its exact dependency environment is not installed. Behavioral burden remains unmeasured.",
-  "next_artifact": "independently replay Stage A X58-X60 and positive disagreement controls; install the exact Stage 0F lock into Python 3.12 and rerun all validation; then implement and independently verify the real full-block authority adapters before considering a synthetic protocol freeze or any Block A packet",
-  "timestamp": "2026-07-28T12:33:02+08:00"
+  "blocking_gate": "Stage A v2 schema and validator edits now encode the R/C/P/E/M direction, disagreement-preserving modes, and mechanical-versus-human grounding, but remain WIP: the old synthetic builders and fixtures have not migrated, so the 79-test Stage A suite currently has 70 failures and one error. X62-X64 and the R-series tests are not yet implemented. The real archived-HTML projection adapter passes 12 tests over 48 pages and 9138 steps, but its claim ceiling is PRODUCTION_AUTHORITY_INCOMPLETE / NO_BLOCK_A. Behavioral burden remains unmeasured.",
+  "next_artifact": "migrate Stage A synthetic builders and fixtures to v2; implement X62-X64 and R02/R04/R05/R06/R07/R09/R10/R12/R15; then run full validation and independent executable red-team before integrating the archived-source adapter",
+  "timestamp": "2026-07-28T13:03:24+08:00"
 }

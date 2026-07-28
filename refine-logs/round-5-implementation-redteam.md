@@ -178,6 +178,9 @@ Round 2 只在“输入已经可信”的条件下接受 E17–E29/E35 的代数
 | X58 `RAW_SUPPORT_SEMANTIC_LAUNDERING` | 把两位 A0 raw submissions 的 `p_new_proposition_id` 同时改为无关 proposition，重算 raw-label ids、support ids、event ids 与全部 refs；adjudicated A0 label仍声称原 `p_new`。原 validator PASS | supporting-id 集合只证明 adjudication引用了两条提交，不证明 raw semantic payload实际支持 adjudicated proposition/obligation/boundary。A0 adjudicator可把一致的无关原始判断“洗”为目标事件 | 对每个 adjudicated event，validator必须按冻结 adjudication rule机械比较两份 raw semantic payload与 adjudicated A0 label：哪些字段要求一致、哪些允许裁决、分歧如何记录。support ids 与 semantic projection必须同时绑定；无支持、字段漂移或未记录分歧 whole-block FAIL |
 | X59 `LATE_A0_LABEL_FREEZE` | 把 event-local A0 label `frozen_at` 改到 A0 barrier之后、A1 reveal之前，再更新 adjudication/barrier refs；adjudication container自身时间仍早于 barrier。原 validator PASS | whole-block barrier只取 container freeze time，不取其引用的每个 A0 label freeze time；因此 A0 semantic label可在“已封 A0”后根据后续信息补写 | A0 barrier必须覆盖所有 event-local A0 labels，并验证每个 label `frozen_at <= adjudication.frozen_at <= barrier.sealed_at`；barrier event-freeze时间与 physical label exact-match。任何 late child、parent-before-child或ref更新时间倒置 whole-block FAIL |
 | X60 `FUTURE_ROLE_ACTIVATION` | 把 coordinator role-history assignment 的 `effective_from` 改到其 frame/exposure/Stage-B 操作之后，重算 role-history与barrier refs；alias和role字符串仍匹配。原 validator PASS | 检查 alias→role 映射但忽略 role何时生效，会允许尚未被授权的 actor 执行冻结、交付与授权 | 每个 artifact author、seal、delivery/access actor与recipient都必须在 event/created/frozen time 落入其 role assignment有效区间；`effective_from` 不得晚于 first use，`complete_through` 必须覆盖 block close。未来或断档 assignment whole-block FAIL |
+| X62 `ADJUDICATION_COLLAPSES_TO_CONSENSUS` | 只让一位 A0 annotator 的 `p_new` 与另一位不同并重签：保留两位 support 时命中 `SEM_A0_RAW_SUPPORT_SEMANTICS`；第三方拒绝一位并保留另一位时，五个 `minItems: 2` 约束使 packet schema-invalid | v1 把五个核心字段定义为必须预先 exact-match，只有 source-label set union 可分歧。这不是 source-blind adjudication，而是 consensus-only filtering；真实少数意见会从 opportunity denominator、reference set 与 recall 中系统性消失 | v2 必须保留每条 raw label并恰好处置一次；允许 `consensus / blinded_human_resolution / independent_paths / unresolved`；逐分歧字段冻结输入值、resolution type、resolved value、adjudicator、时间与 rule/codebook hash。单支持事件不得算 agreement，但不得静默从分母消失；barrier覆盖 resolved、unresolved 与 independent paths |
+| X63 `EVIDENCE_SEMANTIC_NONENTAILMENT` | 两位 raw annotator 与 adjudicator共同把原观察解释为 `PROP-MOON-IS-CHEESE`，重算全部 ids/refs；evidence pointer仍指向真实 observation，原 bytes不含该命题，validator却 `valid=true`、类别 `PURE_WORLD` | hash/pointer只证明“引用了这些 bytes”，agreement只证明结论相同；二者都不证明 evidence蕴含 proposition、world transition 或 normative action difference。自洽虚构可制造任意 C0-B/C/E阳性 | 每个 claim 明确 `grounding_mode=mechanical|blinded_human`。mechanical 路径绑定 typed predicate、冻结 parser/verifier、task/evaluator rule并复算；human 路径完整保留双标、X62 adjudication、agreement/adjudication rate/uncertainty，标记 `HUMAN_ADJUDICATED_EVIDENCE`，不得冒充机械环境证伪 |
+| X64 `REJECTED_EVENT_DENOMINATOR_ERASURE` | 在 clean two-event block 中，把一个 event 的两条 raw dispositions 都改为 free-text `rejected`，删除该 event/A1 path，减小 A0/A1 counts并重签所有 refs/barriers/exposure；validator仍 `valid=true` | “每条 raw 有一个 disposition”不等于 scientific denominator preserved。rejected raw不进入 case、agreement、A1、canonical output或missingness，adjudicator可把阳性与分歧整组删掉并获得内部一致 PASS | 冻结并分别核对 raw roster、case partition、pre-adjudication agreement roster、expected A1 path roster、primary-event roster与missingness roster。rejection只允许 closed reason/evidence且仍进入 typed-invalid/sensitivity；任何 raw/case/path静默丢失、fanout、double-count或缩分母 whole-block FAIL |
 
 ## 7. Bounds verifier semantic soundness 新反例
 
@@ -193,3 +196,23 @@ Round 2 只在“输入已经可信”的条件下接受 E17–E29/E35 的代数
 | X56 `MALFORMED_ACTION_FAILS_NEGATIVE` | primitive A1 使用空 `action_assessment`，或把 old/new compatibility 写成未定义值，同时把 summary 同步写成 negative；原三值派生的 catch-all `else` 将其当 `target_negative`，complete-ledger verifier可签 q_B negative | malformed/unknown 不是 false。fail-open negative 会错误降低 global upper，直接把 measurement uncertainty伪装成不存在 | primitive action必须经过 closed schema：required keys、boolean types、compatibility enums 与互斥组合全部验证；derivation只对合法完整组合输出 true/false，任何缺失、非法或矛盾必须 authority load FAIL或 unresolved，且不得签 negative certificate |
 | X57 `OMISSION_SEMANTICS_DRIFT` | 为修 X56 收紧 grammar 后，bounds 要求 `required_action_omission=true` 时 old/new compatibility 必须为 `unidentifiable`；但上游 StageA 冻结的合法 omission positive 使用 old=`yes`、new=`no`，因此真实合法 event 被拒 | 下游自行重定义上游 label 语义会改变 estimand；fail-closed 不能成为“把合法数据全部拒掉”的借口 | bounds primitive grammar必须 exact复用 StageA A1 schema与 semantic derivation合同；同时重放 valid omission positive control与 malformed negatives。任何跨层规则变更先升级 schema/version与预注册，不能局部补丁漂移 |
 | X61 `STRUCTURAL_VERDICT_AFTER_AUTHORITY_FAILURE` | 仅把 packet 的 external `authority_binding.frame_sha256` 改为另一个 schema-valid hash。原 evaluator已将 C0-B/C/E标 `UNIDENTIFIABLE`，却仍枚举 15,625 个 completions 并输出 `C0-D=CONCENTRATED` | structural verdict建立在同一 identity、manifest、events与mapping provenance上；authority已失效后继续计算会输出伪精确的 scope结论，并可能污染总决策 | 建立全局 measurement-validity gate并先于所有 IR/structural裁决。任何 schema、external authority、manifest、event或mapping provenance invalid时，C0-D 与 pure-world structural verdict一律 `UNIDENTIFIABLE`，不输出 scientific witnesses；diagnostic enumeration如保留必须显式非裁决 |
+
+## 8. Round 6 fresh battle 裁决
+
+fresh reviewer 初审接受 X58–X60 及 source-label disagreement positive control。主线程以 X62 反驳后，reviewer 独立复放两种路径并撤回对 Stage A protocol adequacy 的宽泛接受。另一名 first-principles reviewer 独立构造 X63，并在第二轮确认 X62 与 X63 正交。
+
+最终裁决：
+
+```text
+X58-X60 regression mechanics: ACCEPT
+bounds synthetic mechanics: ACCEPT
+Stage A v1 protocol adequacy: REVISE
+synthetic measurement freeze: REJECT
+production measurement: REJECT
+Block A: REJECT
+Step 1 GO: REJECT
+```
+
+X62 的可证伪反驳条件是：当前实现能够让 substantive raw disagreement 经 reveal 前的显式 resolution 或两个独立 A0→A1 paths 完整 PASS，并在删除 resolution、覆盖 raw、漏路径或 reveal 后改判时 FAIL。当前两条路径都不能编码。
+
+X63 的可证伪反驳条件是：真实 immutable source bytes 经冻结 parser 和 predicate/task/evaluator verifier，能机械复算 claim 与 normative action；或者明确降级为 outcome-blind human measurement并通过预注册 reliability gate。当前 pointer/hash/agreement 不满足任一条件。

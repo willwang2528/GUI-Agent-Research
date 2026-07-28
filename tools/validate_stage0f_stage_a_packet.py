@@ -51,17 +51,20 @@ PREFIX_PAYLOAD_SERIALIZATION = "stage0f-a0-prefix-payload-v1"
 LOCATION_SERIALIZATION = "stage0f-boundary-location-v1"
 ADJUDICATED_EVENT_SERIALIZATION = "stage0f-adjudicated-event-id-v1"
 BLOCK_A0_RAW_LABEL_SERIALIZATION = "stage0f-block-a0-raw-label-id-v1"
+BLOCK_A0_CASE_SERIALIZATION = "stage0f-block-a0-case-id-v1"
+BLOCK_A0_PATH_SERIALIZATION = "stage0f-block-a0-independent-path-id-v1"
 A0_RAW_SUPPORT_ADJUDICATION_RULE = (
-    "stage0f-a0-raw-support-adjudication-v1"
+    "stage0f-a0-raw-support-adjudication-v2"
 )
-A0_RAW_EXACT_MATCH_FIELDS = (
+A0_RAW_FIELDS = (
     "p_old_proposition_id",
     "p_new_proposition_id",
+    "update_source_labels",
     "normative_action_difference",
     "affected_obligation_ids",
     "boundary_type",
 )
-A0_RAW_SET_UNION_FIELDS = ("update_source_labels",)
+A0_FROZEN_TRANSFORM_ID = "sorted_set_union_utf8_v1"
 BLOCK_EXPOSURE_ENTRY_SERIALIZATION = "stage0f-block-exposure-entry-v1"
 RAW_TRAJECTORY_FORMAT = "stage0f-block-raw-trajectory-json-v1"
 RAW_TRAJECTORY_PARSER_ID = (
@@ -419,10 +422,42 @@ def block_a0_raw_label_id(
     )
 
 
-def a0_raw_exact_match_projection(
+def block_a0_case_id(
+    unit_alias: str,
+    boundary_location_id_value: str,
+    raw_label_ids: Iterable[str],
+) -> str:
+    """Derive a case identity from its immutable raw-label denominator."""
+
+    return canonical_sha256(
+        [
+            BLOCK_A0_CASE_SERIALIZATION,
+            unit_alias,
+            boundary_location_id_value,
+            utf8_sorted(raw_label_ids),
+        ]
+    )
+
+
+def block_a0_independent_path_id(
+    case_id: str,
+    raw_label_ids: Iterable[str],
+) -> str:
+    """Derive a path identity without treating it as annotator agreement."""
+
+    return canonical_sha256(
+        [
+            BLOCK_A0_PATH_SERIALIZATION,
+            case_id,
+            utf8_sorted(raw_label_ids),
+        ]
+    )
+
+
+def a0_raw_semantic_projection(
     semantic_payload: Mapping[str, Any],
 ) -> Dict[str, Any]:
-    """Normalize the raw fields that adjudication is not allowed to change."""
+    """Normalize every substantive raw field without losing its value."""
 
     return {
         "p_old_proposition_id": semantic_payload[
@@ -431,6 +466,9 @@ def a0_raw_exact_match_projection(
         "p_new_proposition_id": semantic_payload[
             "p_new_proposition_id"
         ],
+        "update_source_labels": utf8_sorted(
+            semantic_payload["update_source_labels"]
+        ),
         "normative_action_difference": semantic_payload[
             "normative_action_difference"
         ],
@@ -441,14 +479,15 @@ def a0_raw_exact_match_projection(
     }
 
 
-def a0_label_exact_match_projection(
+def a0_label_semantic_projection(
     label: Mapping[str, Any],
 ) -> Dict[str, Any]:
-    """Project an adjudicated label onto the immutable raw-support fields."""
+    """Project the final claim onto every substantive adjudicated field."""
 
     return {
         "p_old_proposition_id": label["p_old"]["proposition_id"],
         "p_new_proposition_id": label["p_new"]["proposition_id"],
+        "update_source_labels": a0_label_source_projection(label),
         "normative_action_difference": label[
             "normative_action_difference"
         ],
@@ -475,82 +514,382 @@ def a0_label_source_projection(label: Mapping[str, Any]) -> List[str]:
 def expected_raw_support_adjudication(
     label: Mapping[str, Any],
     support_raws: Sequence[Mapping[str, Any]],
+    *,
+    selected_raw_label_ids: Optional[Mapping[str, str]] = None,
+    deterministic_transform_fields: Optional[Set[str]] = None,
 ) -> Dict[str, Any]:
-    """Recompute the frozen v1 raw-support adjudication record.
+    """Build the exact v2 per-field adjudication record.
 
-    Five semantic fields are consensus requirements and therefore cannot be
-    changed by adjudication.  ``update_source_labels`` is the sole allowed
-    disagreement field; its deterministic resolution is UTF-8-sorted set
-    union, and any disagreement must be represented explicitly.
+    This helper is intentionally lossless: every raw value hash is retained.
+    A disagreement is resolved only by selecting a recorded raw value or by
+    the one registered deterministic transform.  Human evidence remains
+    human evidence; this record does not mechanically verify semantic truth.
     """
 
     ordered_raws = sorted(
         support_raws,
         key=lambda item: item["a0_raw_label_id"].encode("utf-8"),
     )
-    support_records: List[Dict[str, Any]] = []
-    source_records: List[Dict[str, str]] = []
-    source_values: List[List[str]] = []
-    for raw in ordered_raws:
-        payload = raw["semantic_payload"]
-        normalized_sources = utf8_sorted(
-            set(payload["update_source_labels"])
+    mode = label.get("adjudication_mode", "consensus")
+    adjudicator = label["annotator_alias"]
+    resolved_at = label["frozen_at"]
+    selected = dict(selected_raw_label_ids or {})
+    transform_fields = set(deterministic_transform_fields or set())
+    final_projection = a0_label_semantic_projection(label)
+    raw_projections = {
+        raw["a0_raw_label_id"]: a0_raw_semantic_projection(
+            raw["semantic_payload"]
         )
-        source_hash = canonical_sha256(normalized_sources)
-        support_records.append(
-            {
-                "a0_raw_label_id": raw["a0_raw_label_id"],
-                "semantic_payload_sha256": canonical_sha256(payload),
-                "exact_match_projection_sha256": canonical_sha256(
-                    a0_raw_exact_match_projection(payload)
-                ),
-                "update_source_labels_sha256": source_hash,
-            }
-        )
-        source_records.append(
-            {
-                "a0_raw_label_id": raw["a0_raw_label_id"],
-                "value_sha256": source_hash,
-            }
-        )
-        source_values.append(normalized_sources)
-    resolved_sources = utf8_sorted(
-        {
-            source
-            for values in source_values
-            for source in values
-        }
-    )
-    disagreement = len(
-        {canonical_sha256(values) for values in source_values}
-    ) > 1
-    adjudicated_projection = {
-        "exact_match_projection": a0_label_exact_match_projection(label),
-        "update_source_labels": a0_label_source_projection(label),
+        for raw in ordered_raws
     }
-    return {
-        "rule_id": A0_RAW_SUPPORT_ADJUDICATION_RULE,
-        "exact_match_fields": list(A0_RAW_EXACT_MATCH_FIELDS),
-        "set_union_fields": list(A0_RAW_SET_UNION_FIELDS),
-        "adjudicated_semantic_projection_sha256": canonical_sha256(
-            adjudicated_projection
-        ),
-        "support_semantic_payloads": support_records,
-        "disagreements": (
-            [
-                {
-                    "field": "update_source_labels",
-                    "support_value_hashes": source_records,
-                    "resolution_rule": "sorted_set_union_utf8_v1",
-                    "resolved_value_sha256": canonical_sha256(
-                        resolved_sources
+    field_resolutions: List[Dict[str, Any]] = []
+    for field in A0_RAW_FIELDS:
+        value_rows = [
+            {
+                "a0_raw_label_id": raw_id,
+                "value_sha256": canonical_sha256(projection[field]),
+            }
+            for raw_id, projection in raw_projections.items()
+        ]
+        raw_values = [
+            projection[field] for projection in raw_projections.values()
+        ]
+        unique_hashes = {
+            canonical_sha256(value) for value in raw_values
+        }
+        resolution_type = "exact_consensus"
+        selected_raw_id: Optional[str] = None
+        frozen_transform: Optional[Dict[str, Any]] = None
+        if mode == "independent_paths":
+            resolution_type = "independent_path_value"
+        elif len(unique_hashes) > 1:
+            if field in transform_fields:
+                resolution_type = "frozen_deterministic_transform"
+                frozen_transform = {
+                    "transform_id": A0_FROZEN_TRANSFORM_ID,
+                    "executable_sha256": validator_file_sha256(),
+                    "input_values_sha256": canonical_sha256(
+                        [
+                            {
+                                "a0_raw_label_id": row[
+                                    "a0_raw_label_id"
+                                ],
+                                "value": raw_projections[
+                                    row["a0_raw_label_id"]
+                                ][field],
+                            }
+                            for row in value_rows
+                        ]
+                    ),
+                    "output_value_sha256": canonical_sha256(
+                        final_projection[field]
                     ),
                 }
-            ]
-            if disagreement
-            else []
+            else:
+                resolution_type = "select_raw_value"
+                selected_raw_id = selected.get(field)
+                if selected_raw_id is None:
+                    matching = [
+                        raw_id
+                        for raw_id, projection in raw_projections.items()
+                        if projection[field] == final_projection[field]
+                    ]
+                    selected_raw_id = matching[0] if matching else ordered_raws[
+                        0
+                    ]["a0_raw_label_id"]
+        record: Dict[str, Any] = {
+            "field": field,
+            "raw_value_hashes": value_rows,
+            "resolution_type": resolution_type,
+            "resolved_value": final_projection[field],
+            "resolved_value_sha256": canonical_sha256(
+                final_projection[field]
+            ),
+            "adjudicator_alias": adjudicator,
+            "resolution_rule": (
+                "exact_raw_value_equality"
+                if resolution_type == "exact_consensus"
+                else (
+                    "preserve_independent_path_without_agreement_claim"
+                    if resolution_type == "independent_path_value"
+                    else (
+                        A0_FROZEN_TRANSFORM_ID
+                        if resolution_type
+                        == "frozen_deterministic_transform"
+                        else "blinded_adjudicator_selects_recorded_raw_value"
+                    )
+                )
+            ),
+            "resolved_at": resolved_at,
+        }
+        if selected_raw_id is not None:
+            record["selected_raw_label_id"] = selected_raw_id
+        if frozen_transform is not None:
+            record["frozen_transform"] = frozen_transform
+        field_resolutions.append(record)
+    return {
+        "rule_id": A0_RAW_SUPPORT_ADJUDICATION_RULE,
+        "adjudicated_semantic_projection_sha256": canonical_sha256(
+            final_projection
         ),
+        "field_resolutions": field_resolutions,
+        "resolved_at": resolved_at,
     }
+
+
+def raw_case_agreement_status(
+    raw_records: Sequence[Mapping[str, Any]],
+) -> str:
+    """Derive agreement only from pre-adjudication raw semantic payloads."""
+
+    if len(raw_records) < 2:
+        return "single_support_no_agreement"
+    projections = [
+        a0_raw_semantic_projection(raw["semantic_payload"])
+        for raw in raw_records
+    ]
+    if all(item == projections[0] for item in projections[1:]):
+        return "raw_exact_agreement"
+    return "raw_substantive_disagreement"
+
+
+def _raw_support_adjudication_error(
+    label: Mapping[str, Any],
+    container_event: Mapping[str, Any],
+    support_raws: Sequence[Mapping[str, Any]],
+    raw_to_annotator: Mapping[str, str],
+    artifact_name: str,
+) -> Optional[Dict[str, Any]]:
+    """Validate v2 resolution without laundering human judgment as truth."""
+
+    stage = STAGE_ORDER[3]
+    mode = container_event["adjudication_mode"]
+    record = container_event["raw_support_adjudication"]
+    final_projection = a0_label_semantic_projection(label)
+    ordered_raws = sorted(
+        support_raws,
+        key=lambda item: item["a0_raw_label_id"].encode("utf-8"),
+    )
+    raw_projections = {
+        raw["a0_raw_label_id"]: a0_raw_semantic_projection(
+            raw["semantic_payload"]
+        )
+        for raw in ordered_raws
+    }
+    expected_fields = list(A0_RAW_FIELDS)
+    resolutions = record["field_resolutions"]
+    if (
+        record["rule_id"] != A0_RAW_SUPPORT_ADJUDICATION_RULE
+        or [item["field"] for item in resolutions] != expected_fields
+        or record["adjudicated_semantic_projection_sha256"]
+        != canonical_sha256(final_projection)
+        or record["resolved_at"] != label["frozen_at"]
+    ):
+        return _block_error(
+            stage,
+            "SEM_A0_RAW_SUPPORT_SEMANTICS",
+            "v2 adjudication must freeze the exact six-field final projection and resolution time",
+            artifact_name,
+            "$.raw_support_adjudication",
+        )
+    unique_annotators = {
+        raw_to_annotator[raw["a0_raw_label_id"]]
+        for raw in ordered_raws
+    }
+    agreement = raw_case_agreement_status(ordered_raws)
+    if mode == "consensus" and (
+        len(unique_annotators) < 2
+        or agreement != "raw_exact_agreement"
+    ):
+        return _block_error(
+            stage,
+            "SEM_A0_ADJUDICATION_MODE",
+            "consensus requires exact pre-adjudication agreement from at least two independent annotators",
+            artifact_name,
+            "$.adjudication_mode",
+        )
+    if mode == "blinded_human_resolution" and (
+        len(unique_annotators) < 2
+        or agreement != "raw_substantive_disagreement"
+    ):
+        return _block_error(
+            stage,
+            "SEM_A0_ADJUDICATION_MODE",
+            "blinded human resolution requires a recorded substantive raw disagreement",
+            artifact_name,
+            "$.adjudication_mode",
+        )
+    selected_baseline: Optional[str] = None
+    for field, resolution in zip(expected_fields, resolutions):
+        value_rows = [
+            {
+                "a0_raw_label_id": raw_id,
+                "value_sha256": canonical_sha256(projection[field]),
+            }
+            for raw_id, projection in raw_projections.items()
+        ]
+        raw_values = [
+            projection[field] for projection in raw_projections.values()
+        ]
+        unique_hashes = {
+            canonical_sha256(value) for value in raw_values
+        }
+        if (
+            resolution["raw_value_hashes"] != value_rows
+            or resolution["resolved_value"] != final_projection[field]
+            or resolution["resolved_value_sha256"]
+            != canonical_sha256(final_projection[field])
+            or resolution["adjudicator_alias"]
+            != label["annotator_alias"]
+            or resolution["resolved_at"] != label["frozen_at"]
+        ):
+            return _block_error(
+                stage,
+                "SEM_A0_RAW_SUPPORT_SEMANTICS",
+                "field resolution must retain every exact raw value hash and the exact final value",
+                artifact_name,
+                "$.raw_support_adjudication.field_resolutions.%s"
+                % field,
+            )
+        kind = resolution["resolution_type"]
+        extra_selection = resolution.get("selected_raw_label_id")
+        extra_transform = resolution.get("frozen_transform")
+        if mode == "independent_paths":
+            if (
+                kind != "independent_path_value"
+                or len(ordered_raws) < 1
+                or any(value != final_projection[field] for value in raw_values)
+                or extra_selection is not None
+                or extra_transform is not None
+            ):
+                return _block_error(
+                    stage,
+                    "SEM_A0_RAW_SUPPORT_SEMANTICS",
+                    "an independent path preserves its own raw value and cannot claim consensus",
+                    artifact_name,
+                    "$.raw_support_adjudication.field_resolutions.%s"
+                    % field,
+                )
+            continue
+        if len(unique_hashes) == 1:
+            if (
+                kind != "exact_consensus"
+                or final_projection[field] != raw_values[0]
+                or extra_selection is not None
+                or extra_transform is not None
+            ):
+                return _block_error(
+                    stage,
+                    "SEM_A0_RAW_SUPPORT_SEMANTICS",
+                    "an agreed field must remain the exact raw value",
+                    artifact_name,
+                    "$.raw_support_adjudication.field_resolutions.%s"
+                    % field,
+                )
+            continue
+        if mode != "blinded_human_resolution":
+            return _block_error(
+                stage,
+                "SEM_A0_ADJUDICATION_MODE",
+                "raw disagreement cannot be hidden under consensus",
+                artifact_name,
+                "$.adjudication_mode",
+            )
+        if kind == "select_raw_value":
+            if (
+                extra_selection not in raw_projections
+                or raw_projections[extra_selection][field]
+                != final_projection[field]
+                or extra_transform is not None
+            ):
+                return _block_error(
+                    stage,
+                    "SEM_A0_RESOLUTION_OUT_OF_SUPPORT",
+                    "human resolution must select a physically recorded raw value",
+                    artifact_name,
+                    "$.raw_support_adjudication.field_resolutions.%s"
+                    % field,
+                )
+            if selected_baseline is None:
+                selected_baseline = extra_selection
+            elif selected_baseline != extra_selection:
+                return _block_error(
+                    stage,
+                    "SEM_A0_RESOLUTION_FRANKENSTEIN",
+                    "one final claim cannot splice substantive fields from different raw labels",
+                    artifact_name,
+                    "$.raw_support_adjudication.field_resolutions.%s"
+                    % field,
+                )
+        elif kind == "frozen_deterministic_transform":
+            transformed = utf8_sorted(
+                {
+                    item
+                    for value in raw_values
+                    for item in (
+                        value if isinstance(value, list) else []
+                    )
+                }
+            )
+            expected_transform = {
+                "transform_id": A0_FROZEN_TRANSFORM_ID,
+                "executable_sha256": validator_file_sha256(),
+                "input_values_sha256": canonical_sha256(
+                    [
+                        {
+                            "a0_raw_label_id": raw_id,
+                            "value": raw_projections[raw_id][field],
+                        }
+                        for raw_id in raw_projections
+                    ]
+                ),
+                "output_value_sha256": canonical_sha256(
+                    final_projection[field]
+                ),
+            }
+            if (
+                field != "update_source_labels"
+                or final_projection[field] != transformed
+                or extra_transform != expected_transform
+                or extra_selection is not None
+            ):
+                return _block_error(
+                    stage,
+                    "SEM_A0_RESOLUTION_TRANSFORM",
+                    "only the frozen source-label set union may synthesize a non-raw value",
+                    artifact_name,
+                    "$.raw_support_adjudication.field_resolutions.%s"
+                    % field,
+                )
+        else:
+            return _block_error(
+                stage,
+                "SEM_A0_RESOLUTION_MISSING",
+                "every substantive disagreement needs a typed selection or frozen transform",
+                artifact_name,
+                "$.raw_support_adjudication.field_resolutions.%s"
+                % field,
+            )
+    if selected_baseline is not None:
+        for field in A0_RAW_FIELDS:
+            if field == "update_source_labels" and next(
+                item
+                for item in resolutions
+                if item["field"] == field
+            )["resolution_type"] == "frozen_deterministic_transform":
+                continue
+            if (
+                final_projection[field]
+                != raw_projections[selected_baseline][field]
+            ):
+                return _block_error(
+                    stage,
+                    "SEM_A0_RESOLUTION_FRANKENSTEIN",
+                    "the resolved projection must be one complete raw claim apart from registered transforms",
+                    artifact_name,
+                    "$.raw_support_adjudication",
+                )
+    return None
 
 
 def chained_entry_sha256(entry: Mapping[str, Any]) -> str:
@@ -4767,6 +5106,62 @@ def first_full_block_semantic_error(
                 ),
                 source_categories,
             )
+        disposition_by_raw = {
+            item["a0_raw_label_id"]: item
+            for item in adjudication["raw_label_dispositions"]
+        }
+        case_ids = [
+            item["case_id"] for item in adjudication["case_roster"]
+        ]
+        if len(case_ids) != len(set(case_ids)):
+            return (
+                _block_error(
+                    stage,
+                    "SEM_A0_CASE_DUPLICATE",
+                    "case roster identities must be unique",
+                    location["a0_adjudication_container_relative_path"],
+                    "$.case_roster",
+                ),
+                source_categories,
+            )
+        cases_by_id = {
+            item["case_id"]: item for item in adjudication["case_roster"]
+        }
+        raw_case_memberships = [
+            raw_id
+            for case in adjudication["case_roster"]
+            for raw_id in case["raw_label_ids"]
+        ]
+        if (
+            len(raw_case_memberships) != len(set(raw_case_memberships))
+            or set(raw_case_memberships) != set(raw_to_annotator)
+            or any(
+                disposition_by_raw[raw_id]["case_id"]
+                != block_a0_case_id(
+                    unit_alias,
+                    boundary_id,
+                    case["raw_label_ids"],
+                )
+                or case["case_id"]
+                != block_a0_case_id(
+                    unit_alias,
+                    boundary_id,
+                    case["raw_label_ids"],
+                )
+                for case in adjudication["case_roster"]
+                for raw_id in case["raw_label_ids"]
+            )
+        ):
+            return (
+                _block_error(
+                    stage,
+                    "SEM_A0_RAW_CASE_PARTITION",
+                    "every raw label must occur in exactly one derived case denominator",
+                    location["a0_adjudication_container_relative_path"],
+                    "$.case_roster",
+                ),
+                source_categories,
+            )
         if (
             adjudication["adjudicator_alias"]
             not in registry["a0_adjudicator_aliases"]
@@ -4798,6 +5193,8 @@ def first_full_block_semantic_error(
         dispositions_by_event: Dict[str, Set[str]] = {
             event_id: set() for event_id in event_ids
         }
+        dispositions_by_unresolved: Dict[str, Set[str]] = {}
+        rejected_by_case: Dict[str, Set[str]] = {}
         for disposition in adjudication["raw_label_dispositions"]:
             if disposition["disposition"] == "adjudicated_event":
                 event_id = disposition["adjudicated_event_id"]
@@ -4816,21 +5213,462 @@ def first_full_block_semantic_error(
                 dispositions_by_event[event_id].add(
                     disposition["a0_raw_label_id"]
                 )
+                if (
+                    disposition.get("decided_by") is not None
+                    or disposition.get("decision_rule") is not None
+                    or disposition.get("decided_at") is not None
+                    or disposition.get("unresolved_record_id") is not None
+                    or disposition.get("rejection_reason_code") is not None
+                    or disposition.get("rejection_evidence") is not None
+                ):
+                    return (
+                        _block_error(
+                            stage,
+                            "SEM_A0_RAW_DISPOSITION_TYPED",
+                            "event disposition cannot carry rejection or unresolved fields",
+                            location[
+                                "a0_adjudication_container_relative_path"
+                            ],
+                            "$.raw_label_dispositions",
+                        ),
+                        source_categories,
+                    )
+            elif disposition["disposition"] == "unresolved":
+                unresolved_id = disposition.get(
+                    "unresolved_record_id"
+                )
+                if (
+                    disposition["adjudication_mode"] != "unresolved"
+                    or unresolved_id is None
+                    or disposition.get("adjudicated_event_id") is not None
+                    or disposition.get("rejection_reason_code") is not None
+                    or any(
+                        disposition.get(field) is None
+                        for field in (
+                            "decided_by",
+                            "decision_rule",
+                            "decided_at",
+                        )
+                    )
+                ):
+                    return (
+                        _block_error(
+                            stage,
+                            "SEM_A0_RAW_DISPOSITION_TYPED",
+                            "unresolved disposition requires its exact typed unresolved record and decision metadata",
+                            location[
+                                "a0_adjudication_container_relative_path"
+                            ],
+                            "$.raw_label_dispositions",
+                        ),
+                        source_categories,
+                    )
+                dispositions_by_unresolved.setdefault(
+                    unresolved_id, set()
+                ).add(disposition["a0_raw_label_id"])
+            else:
+                if (
+                    disposition["adjudication_mode"] != "unresolved"
+                    or disposition.get("rejection_reason_code") is None
+                    or disposition.get("rejection_evidence") is None
+                    or any(
+                        disposition.get(field) is None
+                        for field in (
+                            "decided_by",
+                            "decision_rule",
+                            "decided_at",
+                        )
+                    )
+                    or disposition.get("adjudicated_event_id") is not None
+                    or disposition.get("unresolved_record_id") is not None
+                ):
+                    return (
+                        _block_error(
+                            stage,
+                            "SEM_A0_REJECTION_EVIDENCE",
+                            "typed-invalid rejection needs a closed reason, frozen evidence, adjudicator, rule, and time",
+                            location[
+                                "a0_adjudication_container_relative_path"
+                            ],
+                            "$.raw_label_dispositions",
+                        ),
+                        source_categories,
+                    )
+                rejected_by_case.setdefault(
+                    disposition["case_id"], set()
+                ).add(disposition["a0_raw_label_id"])
+        groups_by_id = {
+            item["path_group_id"]: item
+            for item in adjudication["independent_path_groups"]
+        }
+        unresolved_by_id = {
+            item["unresolved_record_id"]: item
+            for item in adjudication["unresolved_records"]
+        }
+        if (
+            len(groups_by_id)
+            != len(adjudication["independent_path_groups"])
+            or len(unresolved_by_id)
+            != len(adjudication["unresolved_records"])
+        ):
+            return (
+                _block_error(
+                    stage,
+                    "SEM_A0_ADJUDICATION_RECORD_DUPLICATE",
+                    "path-group and unresolved record identities must be unique",
+                    location["a0_adjudication_container_relative_path"],
+                ),
+                source_categories,
+            )
+        events_by_id = {
+            item["adjudicated_event_id"]: item
+            for item in adjudication["events"]
+        }
+        for case in adjudication["case_roster"]:
+            case_id = case["case_id"]
+            case_raws = set(case["raw_label_ids"])
+            case_events = set(case["event_ids"])
+            if (
+                case["required_a1_event_ids"] != case["event_ids"]
+                or not case_events.issubset(events_by_id)
+                or any(
+                    events_by_id[event_id]["case_id"] != case_id
+                    for event_id in case_events
+                )
+                or any(
+                    disposition_by_raw[raw_id][
+                        "adjudication_mode"
+                    ]
+                    != case["adjudication_mode"]
+                    for raw_id in case_raws
+                )
+            ):
+                return (
+                    _block_error(
+                        stage,
+                        "SEM_A0_CASE_ROSTER",
+                        "case mode and required A1 path roster must exactly bind its events and raw dispositions",
+                        location[
+                            "a0_adjudication_container_relative_path"
+                        ],
+                        "$.case_roster.%s" % case_id,
+                    ),
+                    source_categories,
+                )
+            raw_records = [raw_by_id[item] for item in case["raw_label_ids"]]
+            derived_agreement = raw_case_agreement_status(raw_records)
+            if case["case_status"] == "resolved_event":
+                if (
+                    case["adjudication_mode"]
+                    not in ("consensus", "blinded_human_resolution")
+                    or len(case_events) != 1
+                    or case_raws
+                    != dispositions_by_event[next(iter(case_events))]
+                    or case["typed_invalid_raw_label_ids"]
+                    or case.get("independent_path_group_id") is not None
+                    or case.get("unresolved_record_id") is not None
+                    or (
+                        case["adjudication_mode"] == "consensus"
+                        and derived_agreement != "raw_exact_agreement"
+                    )
+                    or (
+                        case["adjudication_mode"]
+                        == "blinded_human_resolution"
+                        and derived_agreement
+                        != "raw_substantive_disagreement"
+                    )
+                    or case["agreement_status"] != derived_agreement
+                ):
+                    return (
+                        _block_error(
+                            stage,
+                            "SEM_A0_CASE_ROSTER",
+                            "resolved case must preserve one consensus or blinded-resolution event over its complete raw denominator",
+                            location[
+                                "a0_adjudication_container_relative_path"
+                            ],
+                            "$.case_roster.%s" % case_id,
+                        ),
+                        source_categories,
+                    )
+            elif case["case_status"] == "independent_unmerged_paths":
+                group_id = case.get("independent_path_group_id")
+                group = groups_by_id.get(group_id)
+                event_support_union = set().union(
+                    *(
+                        dispositions_by_event[event_id]
+                        for event_id in case_events
+                    )
+                ) if case_events else set()
+                if (
+                    case["adjudication_mode"] != "independent_paths"
+                    or len(case_events) < 2
+                    or group is None
+                    or group["case_id"] != case_id
+                    or set(group["raw_label_ids"]) != case_raws
+                    or set(group["event_ids"]) != case_events
+                    or event_support_union != case_raws
+                    or sum(
+                        len(dispositions_by_event[event_id])
+                        for event_id in case_events
+                    )
+                    != len(case_raws)
+                    or case["typed_invalid_raw_label_ids"]
+                    or case.get("unresolved_record_id") is not None
+                    or case["agreement_status"] != derived_agreement
+                ):
+                    return (
+                        _block_error(
+                            stage,
+                            "SEM_A0_INDEPENDENT_PATH_ROSTER",
+                            "independent paths need one explicit group whose disjoint paths preserve the complete raw denominator",
+                            location[
+                                "a0_adjudication_container_relative_path"
+                            ],
+                            "$.case_roster.%s" % case_id,
+                        ),
+                        source_categories,
+                    )
+            elif case["case_status"] == "unresolved":
+                unresolved_id = case.get("unresolved_record_id")
+                unresolved = unresolved_by_id.get(unresolved_id)
+                if (
+                    case["adjudication_mode"] != "unresolved"
+                    or case_events
+                    or case["required_a1_event_ids"]
+                    or unresolved is None
+                    or unresolved["case_id"] != case_id
+                    or set(unresolved["raw_label_ids"]) != case_raws
+                    or dispositions_by_unresolved.get(
+                        unresolved_id, set()
+                    )
+                    != case_raws
+                    or case["typed_invalid_raw_label_ids"]
+                    or case.get("independent_path_group_id") is not None
+                    or case["agreement_status"]
+                    != "unresolved_disagreement"
+                ):
+                    return (
+                        _block_error(
+                            stage,
+                            "SEM_A0_UNRESOLVED_ROSTER",
+                            "unresolved case must remain an explicit denominator record with no primary or A1 path",
+                            location[
+                                "a0_adjudication_container_relative_path"
+                            ],
+                            "$.case_roster.%s" % case_id,
+                        ),
+                        source_categories,
+                    )
+            else:
+                if (
+                    case["adjudication_mode"] != "unresolved"
+                    or case_events
+                    or case["required_a1_event_ids"]
+                    or set(case["typed_invalid_raw_label_ids"])
+                    != case_raws
+                    or rejected_by_case.get(case_id, set()) != case_raws
+                    or case.get("independent_path_group_id") is not None
+                    or case.get("unresolved_record_id") is not None
+                    or case["agreement_status"]
+                    != "typed_invalid_not_assessed"
+                ):
+                    return (
+                        _block_error(
+                            stage,
+                            "SEM_A0_TYPED_INVALID_ROSTER",
+                            "typed-invalid raw labels remain in the case and missingness denominator",
+                            location[
+                                "a0_adjudication_container_relative_path"
+                            ],
+                            "$.case_roster.%s" % case_id,
+                        ),
+                        source_categories,
+                    )
+        case_event_memberships = [
+            event_id
+            for case in adjudication["case_roster"]
+            for event_id in case["event_ids"]
+        ]
+        if (
+            len(case_event_memberships)
+            != len(set(case_event_memberships))
+            or set(case_event_memberships) != set(event_ids)
+            or set(groups_by_id)
+            != {
+                case["independent_path_group_id"]
+                for case in adjudication["case_roster"]
+                if case["case_status"]
+                == "independent_unmerged_paths"
+            }
+            or set(unresolved_by_id)
+            != {
+                case["unresolved_record_id"]
+                for case in adjudication["case_roster"]
+                if case["case_status"] == "unresolved"
+            }
+        ):
+            return (
+                _block_error(
+                    stage,
+                    "SEM_A0_CASE_EVENT_PARTITION",
+                    "every event, independent group, and unresolved record belongs to exactly one case",
+                    location["a0_adjudication_container_relative_path"],
+                    "$.case_roster",
+                ),
+                source_categories,
+            )
+        for group in adjudication["independent_path_groups"]:
+            group_events = [
+                events_by_id[event_id] for event_id in group["event_ids"]
+            ]
+            expected_path_ids = [
+                block_a0_independent_path_id(
+                    group["case_id"],
+                    event["supporting_a0_raw_label_ids"],
+                )
+                for event in group_events
+            ]
+            if (
+                group["path_ids"] != expected_path_ids
+                or any(
+                    event["adjudication_mode"] != "independent_paths"
+                    or event.get("independent_path_group_id")
+                    != group["path_group_id"]
+                    or event.get("independent_path_id")
+                    != expected_path_id
+                    for event, expected_path_id in zip(
+                        group_events, expected_path_ids
+                    )
+                )
+            ):
+                return (
+                    _block_error(
+                        stage,
+                        "SEM_A0_INDEPENDENT_PATH_ROSTER",
+                        "path group must bind ordered derived path ids and cannot masquerade as unrelated single-support events",
+                        location[
+                            "a0_adjudication_container_relative_path"
+                        ],
+                        "$.independent_path_groups.%s"
+                        % group["path_group_id"],
+                    ),
+                    source_categories,
+                )
+        for unresolved in adjudication["unresolved_records"]:
+            unresolved_raws = [
+                raw_by_id[raw_id]
+                for raw_id in unresolved["raw_label_ids"]
+            ]
+            raw_projections = {
+                raw["a0_raw_label_id"]: a0_raw_semantic_projection(
+                    raw["semantic_payload"]
+                )
+                for raw in unresolved_raws
+            }
+            differing_fields = [
+                field
+                for field in A0_RAW_FIELDS
+                if len(
+                    {
+                        canonical_sha256(projection[field])
+                        for projection in raw_projections.values()
+                    }
+                )
+                > 1
+            ]
+            if not differing_fields:
+                differing_fields = list(A0_RAW_FIELDS)
+            unresolved_fields = unresolved["unresolved_fields"]
+            if (
+                [item["field"] for item in unresolved_fields]
+                != differing_fields
+                or any(
+                    item["raw_value_hashes"]
+                    != [
+                        {
+                            "a0_raw_label_id": raw_id,
+                            "value_sha256": canonical_sha256(
+                                raw_projections[raw_id][item["field"]]
+                            ),
+                        }
+                        for raw_id in raw_projections
+                    ]
+                    for item in unresolved_fields
+                )
+            ):
+                return (
+                    _block_error(
+                        stage,
+                        "SEM_A0_UNRESOLVED_ROSTER",
+                        "unresolved record must enumerate every unresolved field and every raw value hash",
+                        location[
+                            "a0_adjudication_container_relative_path"
+                        ],
+                        "$.unresolved_records.%s"
+                        % unresolved["unresolved_record_id"],
+                    ),
+                    source_categories,
+                )
         label_times: List[datetime] = []
         for container_event in adjudication["events"]:
             event_id = container_event["adjudicated_event_id"]
+            case_id = container_event["case_id"]
+            mode = container_event["adjudication_mode"]
             supports = set(
                 container_event["supporting_a0_raw_label_ids"]
             )
             if (
                 supports != dispositions_by_event[event_id]
-                or len({raw_to_annotator[item] for item in supports}) < 2
+                or not supports
+                or any(
+                    disposition_by_raw[item]["case_id"] != case_id
+                    or disposition_by_raw[item]["adjudication_mode"]
+                    != mode
+                    or (
+                        mode == "independent_paths"
+                        and (
+                            disposition_by_raw[item].get(
+                                "independent_path_group_id"
+                            )
+                            != container_event.get(
+                                "independent_path_group_id"
+                            )
+                            or disposition_by_raw[item].get(
+                                "independent_path_id"
+                            )
+                            != container_event.get("independent_path_id")
+                        )
+                    )
+                    for item in supports
+                )
+                or (
+                    mode in ("consensus", "blinded_human_resolution")
+                    and len(
+                        {
+                            raw_to_annotator[item]
+                            for item in supports
+                        }
+                    )
+                    < 2
+                )
+                or (
+                    mode != "independent_paths"
+                    and (
+                        container_event.get(
+                            "independent_path_group_id"
+                        )
+                        is not None
+                        or container_event.get("independent_path_id")
+                        is not None
+                    )
+                )
             ):
                 return (
                     _block_error(
                         stage,
                         "SEM_A0_EVENT_RAW_SUPPORT",
-                        "each event must use exactly its dispositions and support from both independent submissions",
+                        "event support must exactly match one case/path disposition; only consensus or human resolution claims cross-annotator support",
                         location["a0_adjudication_container_relative_path"],
                         "$.events.%s.supporting_a0_raw_label_ids" % event_id,
                     ),
@@ -4844,8 +5682,12 @@ def first_full_block_semantic_error(
             if (
                 label["unit_alias"] != unit_alias
                 or label["boundary_location_id"] != boundary_id
+                or label["case_id"] != case_id
                 or label["adjudicated_event_id"] != event_id
                 or set(label["supporting_a0_raw_label_ids"]) != supports
+                or label["adjudication_mode"] != mode
+                or label["grounding_mode"]
+                != container_event["grounding_mode"]
                 or label["a0_input_ref"] != artifact_ref(a0_input)
                 or label["annotator_alias"]
                 != adjudication["adjudicator_alias"]
@@ -4856,6 +5698,41 @@ def first_full_block_semantic_error(
                         "SEM_A0_EVENT_LINK",
                         "A0 event label, location, raw support, and adjudicator cannot be spliced",
                         container_event["a0_label_relative_path"],
+                    ),
+                    source_categories,
+                )
+            if label["grounding_mode"] == "mechanical":
+                return (
+                    _block_error(
+                        stage,
+                        "SEM_MECHANICAL_GROUNDING_UNAVAILABLE",
+                        "mechanical semantic grounding requires a registered frozen typed-claim verifier; none is available in this implementation",
+                        container_event["a0_label_relative_path"],
+                        "$.mechanical_grounding_contract",
+                    ),
+                    source_categories,
+                )
+            if (
+                label["evidence_class"]
+                != "HUMAN_ADJUDICATED_EVIDENCE"
+                or label["semantic_verification"]
+                != "NOT_MECHANICALLY_VERIFIED"
+                or label["mechanical_grounding_contract"] is not None
+                or any(
+                    raw_by_id[item]["semantic_payload"][
+                        "grounding_mode"
+                    ]
+                    != "blinded_human"
+                    for item in supports
+                )
+            ):
+                return (
+                    _block_error(
+                        stage,
+                        "SEM_A0_GROUNDING_CLAIM",
+                        "current A0 semantic claims are explicit blinded-human evidence and cannot be labeled mechanically verified",
+                        container_event["a0_label_relative_path"],
+                        "$.grounding_mode",
                     ),
                     source_categories,
                 )
@@ -4876,52 +5753,15 @@ def first_full_block_semantic_error(
                     supports, key=lambda value: value.encode("utf-8")
                 )
             ]
-            label_exact_projection = a0_label_exact_match_projection(
-                label
+            error = _raw_support_adjudication_error(
+                label,
+                container_event,
+                support_raws,
+                raw_to_annotator,
+                container_event["a0_label_relative_path"],
             )
-            resolved_source_labels = utf8_sorted(
-                {
-                    source
-                    for raw in support_raws
-                    for source in raw["semantic_payload"][
-                        "update_source_labels"
-                    ]
-                }
-            )
-            if (
-                any(
-                    a0_raw_exact_match_projection(
-                        raw["semantic_payload"]
-                    )
-                    != label_exact_projection
-                    for raw in support_raws
-                )
-                or resolved_source_labels
-                != a0_label_source_projection(label)
-                or container_event["raw_support_adjudication"]
-                != expected_raw_support_adjudication(
-                    label, support_raws
-                )
-            ):
-                return (
-                    _block_error(
-                        stage,
-                        "SEM_A0_RAW_SUPPORT_SEMANTICS",
-                        (
-                            "every raw support must exactly match the "
-                            "adjudicated proposition, obligation, normative "
-                            "difference, and boundary; source-label "
-                            "disagreement is allowed only through the frozen "
-                            "set-union rule and must be recorded exactly"
-                        ),
-                        location[
-                            "a0_adjudication_container_relative_path"
-                        ],
-                        "$.events.%s.raw_support_adjudication"
-                        % event_id,
-                    ),
-                    source_categories,
-                )
+            if error:
+                return error, source_categories
             label_times.append(parse_timestamp(label["frozen_at"]))
             if event_id in all_event_records:
                 return (
@@ -4945,6 +5785,30 @@ def first_full_block_semantic_error(
             parse_timestamp(item["frozen_at"])
             for item in submissions["submissions"]
         ]
+        resolution_times = [
+            parse_timestamp(item["decided_at"])
+            for item in adjudication["raw_label_dispositions"]
+            if item["disposition"] in ("rejected", "unresolved")
+        ]
+        resolution_times.extend(
+            parse_timestamp(item["frozen_at"])
+            for item in adjudication["case_roster"]
+        )
+        resolution_times.extend(
+            parse_timestamp(item["frozen_at"])
+            for item in adjudication["independent_path_groups"]
+        )
+        resolution_times.extend(
+            parse_timestamp(item["frozen_at"])
+            for item in adjudication["unresolved_records"]
+        )
+        resolution_times.extend(
+            parse_timestamp(field["resolved_at"])
+            for event in adjudication["events"]
+            for field in event["raw_support_adjudication"][
+                "field_resolutions"
+            ]
+        )
         if not (
             manifest_time
             < min(individual_submission_times)
@@ -4952,12 +5816,21 @@ def first_full_block_semantic_error(
             <= submissions_time
             < adjudication_time
             < a0_seal
+            and (
+                not resolution_times
+                or (
+                    submissions_time
+                    < min(resolution_times)
+                    <= max(resolution_times)
+                    <= adjudication_time
+                )
+            )
         ):
             return (
                 _block_error(
                     stage,
                     "SEM_A0_ONLY_ADJUDICATION_ORDER",
-                    "manifest -> both raw submissions -> A0-only adjudication -> full A0 barrier is required",
+                    "manifest -> raw submissions -> every case/path/resolution -> adjudication container -> full A0 barrier is required",
                     location["a0_adjudication_container_relative_path"],
                 ),
                 source_categories,
@@ -4992,9 +5865,18 @@ def first_full_block_semantic_error(
         expected_freeze_events = [
             {
                 "adjudicated_event_id": item["adjudicated_event_id"],
+                "case_id": item["case_id"],
                 "supporting_a0_raw_label_ids": item[
                     "supporting_a0_raw_label_ids"
                 ],
+                "adjudication_mode": item["adjudication_mode"],
+                "grounding_mode": item["grounding_mode"],
+                "evidence_class": _referenced_value(
+                    loaded, "a0_label", item["a0_label_relative_path"]
+                )["evidence_class"],
+                "raw_support_adjudication_sha256": canonical_sha256(
+                    item["raw_support_adjudication"]
+                ),
                 "frozen_at": _referenced_value(
                     loaded, "a0_label", item["a0_label_relative_path"]
                 )["frozen_at"],
@@ -5010,7 +5892,14 @@ def first_full_block_semantic_error(
             or freeze["a0_adjudication_container_ref"]
             != artifact_ref(adjudication)
             or freeze["a0_raw_label_ids"] != flattened_raw_ids
+            or freeze["raw_label_dispositions"]
+            != adjudication["raw_label_dispositions"]
+            or freeze["case_roster"] != adjudication["case_roster"]
             or freeze["adjudicated_events"] != expected_freeze_events
+            or freeze["independent_path_groups"]
+            != adjudication["independent_path_groups"]
+            or freeze["unresolved_records"]
+            != adjudication["unresolved_records"]
             or freeze["prefix_chain_tip_sha256"]
             != a0_input["prefix_chain_tip_sha256"]
             or freeze["a0_submissions_frozen_at"]
@@ -5022,7 +5911,7 @@ def first_full_block_semantic_error(
                 _block_error(
                     stage,
                     "SEM_A0_BARRIER_FREEZE_MISMATCH",
-                    "A0 barrier must exactly freeze submissions, raw ids, the single container, all 0..N events, and prefix tip",
+                    "A0 barrier must exactly freeze raw dispositions, cases, paths, unresolved records, all 0..N events, and prefix tip",
                     BLOCK_BARRIER_FILE,
                     "$.location_freezes.%s.%s" % key,
                 ),
@@ -5073,6 +5962,10 @@ def first_full_block_semantic_error(
             source_categories,
         )
     latest_a1 = a0_seal
+    seen_a1_reveal_refs: Set[Tuple[str, str]] = set()
+    seen_a1_label_refs: Set[Tuple[str, str]] = set()
+    seen_a1_paths: Set[str] = set()
+    primary_rows_by_case: Dict[str, List[str]] = {}
     for freeze in a1_freezes:
         event_id = freeze["adjudicated_event_id"]
         (unit_alias, boundary_id), a0_input, a0_label, _ = all_event_records[
@@ -5098,6 +5991,36 @@ def first_full_block_semantic_error(
         a1_label = _referenced_value(
             loaded, "a1_label", freeze["a1_label_relative_path"]
         )
+        reveal_ref_key = (
+            freeze["a1_reveal_ref"]["artifact_id"],
+            freeze["a1_reveal_ref"]["sha256"],
+        )
+        label_ref_key = (
+            freeze["a1_label_ref"]["artifact_id"],
+            freeze["a1_label_ref"]["sha256"],
+        )
+        path_names = {
+            freeze["a1_reveal_relative_path"],
+            freeze["a1_label_relative_path"],
+        }
+        if (
+            reveal_ref_key in seen_a1_reveal_refs
+            or label_ref_key in seen_a1_label_refs
+            or seen_a1_paths.intersection(path_names)
+        ):
+            return (
+                _block_error(
+                    stage,
+                    "SEM_A1_PATH_ALIAS",
+                    "every required event must have one physically distinct A1 reveal and label path",
+                    BLOCK_A1_BARRIER_FILE,
+                    "$.event_freezes.%s" % event_id,
+                ),
+                source_categories,
+            )
+        seen_a1_reveal_refs.add(reveal_ref_key)
+        seen_a1_label_refs.add(label_ref_key)
+        seen_a1_paths.update(path_names)
         if (
             reveal["unit_alias"] != unit_alias
             or reveal["adjudicated_event_id"] != event_id
@@ -5154,6 +6077,10 @@ def first_full_block_semantic_error(
                 source_categories,
             )
         latest_a1 = max(latest_a1, label_time)
+        if a1_label["primary_uacf_d_positive"]:
+            primary_rows_by_case.setdefault(
+                a0_label["case_id"], []
+            ).append(event_id)
         scan = scans_by_alias[unit_alias]
         prefix_entries = _referenced_value(
             loaded, "prefix_commit", scan["prefix_commit_log_relative_path"]
@@ -5204,6 +6131,20 @@ def first_full_block_semantic_error(
                 ),
                 source_categories,
             )
+    if any(
+        len(event_ids_for_case) > 1
+        for event_ids_for_case in primary_rows_by_case.values()
+    ):
+        return (
+            _block_error(
+                stage,
+                "SEM_A0_CASE_PRIMARY_MULTIPLICITY",
+                "one raw-derived case can contribute at most one primary analysis row",
+                BLOCK_A1_BARRIER_FILE,
+                "$.event_freezes",
+            ),
+            source_categories,
+        )
         if atomicity["action_unit"] == "batch_bundle":
             ordinals = [
                 item["action_ordinal"] for item in action["subactions"]

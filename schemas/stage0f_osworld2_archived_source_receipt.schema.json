@@ -1,0 +1,535 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-agent-memory.local/schemas/stage0f_osworld2_archived_source_receipt.schema.json",
+  "title": "Stage 0F OSWorld 2.0 archived-source literal projection receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifact_type",
+    "schema_version",
+    "valid",
+    "source_kind",
+    "manifest",
+    "detail_audit",
+    "parser",
+    "frame",
+    "projection",
+    "authority_status",
+    "units",
+    "issues",
+    "claim_ceiling",
+    "receipt_sha256"
+  ],
+  "properties": {
+    "artifact_type": {
+      "const": "stage0f_osworld2_archived_source_receipt"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "valid": {
+      "type": "boolean"
+    },
+    "source_kind": {
+      "const": "REAL_ARCHIVED_OSWORLD2_DETAIL_HTML"
+    },
+    "manifest": {
+      "$ref": "#/$defs/path_receipt"
+    },
+    "detail_audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "protocol"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "protocol": {
+          "const": "stage0f-detail-availability-v1"
+        }
+      }
+    },
+    "parser": {
+      "$ref": "#/$defs/registered_parser"
+    },
+    "frame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_ids",
+        "hosted_config_ids",
+        "expected_page_count",
+        "actual_page_count",
+        "replay_page_count",
+        "explicit_no_step_page_count",
+        "explicit_no_step_file"
+      ],
+      "properties": {
+        "task_ids": {
+          "const": [
+            "009",
+            "020",
+            "024",
+            "029",
+            "050",
+            "066",
+            "073",
+            "083"
+          ]
+        },
+        "hosted_config_ids": {
+          "const": [
+            "MiniMax-M3",
+            "claude-opus-4-7",
+            "claude-sonnet-4-6-max",
+            "claude-sonnet-4-6-medium",
+            "gpt-5.5",
+            "qwen37"
+          ]
+        },
+        "expected_page_count": {
+          "const": 48
+        },
+        "actual_page_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "replay_page_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "explicit_no_step_page_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "explicit_no_step_file": {
+          "const": "050__MiniMax-M3.html"
+        }
+      }
+    },
+    "projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "projected_replay_units",
+        "explicit_no_step_units",
+        "projected_steps",
+        "archive_literal_projection_sha256"
+      ],
+      "properties": {
+        "projected_replay_units": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "explicit_no_step_units": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "projected_steps": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "archive_literal_projection_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "authority_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "archived_source_projection",
+        "observation_assets",
+        "screenshot_bytes",
+        "screenshot_urls",
+        "initial_pre_action_observation",
+        "timeline_alignment",
+        "production_authority",
+        "block_a"
+      ],
+      "properties": {
+        "archived_source_projection": {
+          "enum": [
+            "REAL_ARCHIVED_SOURCE_PROJECTION_VERIFIED",
+            "ARCHIVED_SOURCE_PROJECTION_REJECTED"
+          ]
+        },
+        "observation_assets": {
+          "const": "OBSERVATION_ASSET_AUTHORITY_PARTIAL"
+        },
+        "screenshot_bytes": {
+          "const": "MISSING_SCREENSHOT_BYTES"
+        },
+        "screenshot_urls": {
+          "const": "REFERENCE_ONLY_NOT_FETCHED_OR_VERIFIED"
+        },
+        "initial_pre_action_observation": {
+          "const": "MISSING_INITIAL_PRE_ACTION_OBSERVATION"
+        },
+        "timeline_alignment": {
+          "const": "TIMELINE_ALIGNMENT_UNPROVEN"
+        },
+        "production_authority": {
+          "const": "PRODUCTION_AUTHORITY_INCOMPLETE"
+        },
+        "block_a": {
+          "const": "NO_BLOCK_A"
+        }
+      }
+    },
+    "units": {
+      "type": "array",
+      "maxItems": 48,
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/replay_unit"
+          },
+          {
+            "$ref": "#/$defs/no_step_unit"
+          }
+        ]
+      }
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/issue"
+      }
+    },
+    "claim_ceiling": {
+      "const": "REAL_ARCHIVED_SOURCE_PROJECTION_VERIFIED / OBSERVATION_ASSET_AUTHORITY_PARTIAL / PRODUCTION_AUTHORITY_INCOMPLETE / NO_BLOCK_A"
+    },
+    "receipt_sha256": {
+      "$ref": "#/$defs/sha256"
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "path_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "registered_parser": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "parser_id",
+        "implementation_path",
+        "registered_sha256",
+        "actual_sha256",
+        "status"
+      ],
+      "properties": {
+        "parser_id": {
+          "const": "stage0f-osworld2-archived-html-v1"
+        },
+        "implementation_path": {
+          "const": "tools/verify_stage0f_osworld2_archived_source.py"
+        },
+        "registered_sha256": {
+          "const": "a44880b3c1e41c5bddbcd4370b27860e5993cfb2787cc622b795c7b0655abbdf"
+        },
+        "actual_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "status": {
+          "enum": [
+            "VERIFIED",
+            "MISMATCH"
+          ]
+        }
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "category",
+        "label",
+        "detail",
+        "status"
+      ],
+      "properties": {
+        "category": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "detail": {
+          "type": "object"
+        },
+        "status": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "subaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "category",
+        "label",
+        "detail"
+      ],
+      "properties": {
+        "category": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "detail": {
+          "type": "object"
+        }
+      }
+    },
+    "screenshot_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "declared_exists",
+        "file",
+        "url",
+        "authority_status"
+      ],
+      "properties": {
+        "declared_exists": {
+          "type": "boolean"
+        },
+        "file": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "authority_status": {
+          "const": "REFERENCE_ONLY_NOT_FETCHED_OR_VERIFIED"
+        }
+      }
+    },
+    "projected_step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "index",
+        "action",
+        "subactions",
+        "timestamp",
+        "screenshot_reference",
+        "literal_projection_sha256"
+      ],
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "action": {
+          "$ref": "#/$defs/action"
+        },
+        "subactions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/subaction"
+          }
+        },
+        "timestamp": {
+          "type": "string",
+          "pattern": "^[0-9]{8}@[0-9]{12}$"
+        },
+        "screenshot_reference": {
+          "$ref": "#/$defs/screenshot_reference"
+        },
+        "literal_projection_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "replay_unit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "task_id",
+        "hosted_config_id",
+        "page_sha256",
+        "availability_status",
+        "root_identity",
+        "embedded_replay_bytes_sha256",
+        "decoded_replay_payload_sha256",
+        "total_steps",
+        "steps",
+        "screenshot_bytes_status",
+        "initial_pre_action_observation_status",
+        "timeline_alignment_status",
+        "unit_literal_projection_sha256"
+      ],
+      "properties": {
+        "file": {
+          "type": "string",
+          "pattern": "^[0-9]{3}__[A-Za-z0-9.-]+\\.html$"
+        },
+        "task_id": {
+          "type": "string",
+          "pattern": "^[0-9]{3}$"
+        },
+        "hosted_config_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "page_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "availability_status": {
+          "const": "REPLAY_PROJECTED"
+        },
+        "root_identity": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "embedded_replay_bytes_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "decoded_replay_payload_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "total_steps": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/projected_step"
+          }
+        },
+        "screenshot_bytes_status": {
+          "const": "MISSING_SCREENSHOT_BYTES"
+        },
+        "initial_pre_action_observation_status": {
+          "const": "MISSING_INITIAL_PRE_ACTION_OBSERVATION"
+        },
+        "timeline_alignment_status": {
+          "const": "TIMELINE_ALIGNMENT_UNPROVEN"
+        },
+        "unit_literal_projection_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "no_step_unit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "task_id",
+        "hosted_config_id",
+        "page_sha256",
+        "availability_status",
+        "explicit_no_step_status",
+        "screenshot_bytes_status",
+        "initial_pre_action_observation_status",
+        "timeline_alignment_status"
+      ],
+      "properties": {
+        "file": {
+          "const": "050__MiniMax-M3.html"
+        },
+        "task_id": {
+          "const": "050"
+        },
+        "hosted_config_id": {
+          "const": "MiniMax-M3"
+        },
+        "page_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "availability_status": {
+          "const": "EXPLICIT_NO_STEP"
+        },
+        "explicit_no_step_status": {
+          "const": "VERIFIED_NO_TRAJECTORY_INFERRED"
+        },
+        "screenshot_bytes_status": {
+          "const": "MISSING_SCREENSHOT_BYTES"
+        },
+        "initial_pre_action_observation_status": {
+          "const": "MISSING_INITIAL_PRE_ACTION_OBSERVATION"
+        },
+        "timeline_alignment_status": {
+          "const": "TIMELINE_ALIGNMENT_UNPROVEN"
+        }
+      }
+    },
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "artifact",
+        "pointer"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artifact": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pointer": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

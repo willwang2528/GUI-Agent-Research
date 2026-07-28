@@ -22,6 +22,7 @@
 | 2026-07-28 | Round 4c release 独立审计 | 检查 production bypass、decision 修复、claim ceiling、Markdown、凭据与大文件 | 允许提交 NOT_READY 检查点；拒绝 synthetic freeze、Block A 与 Step 1 GO |
 | 2026-07-28 | Python 3.12 迁移目标 | 项目内 `.venv-stage0f-py312` 已使用本机 Python 3.12.13 创建；精确依赖尚未安装 | 仅证明目标解释器存在；依赖安装被审批服务错误阻塞，全套验证仍以已审计 Python 3.9.6 环境执行，不声称 3.12 可复现 |
 | 2026-07-28 | Round 5 full-block / bounds battle | Stage A 79/79 与 strict schema 27/27；bounds root 33/33；独立 bounds bounded replay 22/22 | 仅接受指定 synthetic mechanics；Stage A fresh replay、真实 authority adapters、Python 3.12 回归与 behavioral measurement 均未完成，继续 `NO STEP 1 GO` |
+| 2026-07-28 | Round 6 adjudication/grounding battle | X62 两种分歧路径均不能编码；X63 共同错误命题在重签后仍 PASS；fresh reviewer 在反驳后撤回宽泛 ACCEPT | Stage A v1 退回 `REVISE`：X58–X60 只是局部防线；必须先实现 disagreement-preserving adjudication 与 mechanical/human grounding 分流 |
 
 ## 当前第一性结论
 

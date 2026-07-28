@@ -78,8 +78,12 @@
           "a0_input_ref",
           "a0_submissions_ref",
           "a0_raw_label_ids",
+          "raw_label_dispositions",
+          "case_roster",
           "a0_adjudication_container_ref",
           "adjudicated_events",
+          "independent_path_groups",
+          "unresolved_records",
           "prefix_chain_tip_sha256",
           "a0_submissions_frozen_at",
           "a0_adjudication_frozen_at"
@@ -104,6 +108,18 @@
               "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
             }
           },
+          "raw_label_dispositions": {
+            "type": "array",
+            "items": {
+              "$ref": "https://gui-agent-memory.local/schemas/stage0f_block_a0_adjudication.schema.json#/$defs/raw_label_disposition"
+            }
+          },
+          "case_roster": {
+            "type": "array",
+            "items": {
+              "$ref": "https://gui-agent-memory.local/schemas/stage0f_block_a0_adjudication.schema.json#/$defs/case_record"
+            }
+          },
           "a0_adjudication_container_ref": {
             "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/artifact_ref"
           },
@@ -114,25 +130,67 @@
               "additionalProperties": false,
               "required": [
                 "adjudicated_event_id",
+                "case_id",
                 "supporting_a0_raw_label_ids",
+                "adjudication_mode",
+                "grounding_mode",
+                "evidence_class",
+                "raw_support_adjudication_sha256",
                 "frozen_at"
               ],
               "properties": {
                 "adjudicated_event_id": {
                   "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
                 },
+                "case_id": {
+                  "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+                },
                 "supporting_a0_raw_label_ids": {
                   "type": "array",
-                  "minItems": 2,
+                  "minItems": 1,
                   "uniqueItems": true,
                   "items": {
                     "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
                   }
                 },
+                "adjudication_mode": {
+                  "enum": [
+                    "consensus",
+                    "blinded_human_resolution",
+                    "independent_paths"
+                  ]
+                },
+                "grounding_mode": {
+                  "enum": [
+                    "mechanical",
+                    "blinded_human"
+                  ]
+                },
+                "evidence_class": {
+                  "enum": [
+                    "MECHANICALLY_VERIFIED_TYPED_CLAIM",
+                    "HUMAN_ADJUDICATED_EVIDENCE"
+                  ]
+                },
+                "raw_support_adjudication_sha256": {
+                  "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/sha256"
+                },
                 "frozen_at": {
                   "$ref": "https://gui-agent-memory.local/schemas/stage0f_common.schema.json#/$defs/timestamp"
                 }
               }
+            }
+          },
+          "independent_path_groups": {
+            "type": "array",
+            "items": {
+              "$ref": "https://gui-agent-memory.local/schemas/stage0f_block_a0_adjudication.schema.json#/$defs/independent_path_group"
+            }
+          },
+          "unresolved_records": {
+            "type": "array",
+            "items": {
+              "$ref": "https://gui-agent-memory.local/schemas/stage0f_block_a0_adjudication.schema.json#/$defs/unresolved_record"
             }
           },
           "prefix_chain_tip_sha256": {

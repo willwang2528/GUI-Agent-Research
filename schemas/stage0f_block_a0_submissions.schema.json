@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://gui-agent-memory.local/schemas/stage0f_block_a0_submissions.schema.json",
-  "title": "Stage 0F exactly-two independent A0 submissions for one location",
+  "title": "Stage 0F lossless independent A0 submissions for one location",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -83,7 +83,8 @@
                     "update_source_labels",
                     "normative_action_difference",
                     "affected_obligation_ids",
-                    "boundary_type"
+                    "boundary_type",
+                    "grounding_mode"
                   ],
                   "properties": {
                     "p_old_proposition_id": {
@@ -128,6 +129,12 @@
                         "artifact_write",
                         "derived_computation",
                         "block_decision"
+                      ]
+                    },
+                    "grounding_mode": {
+                      "enum": [
+                        "mechanical",
+                        "blinded_human"
                       ]
                     }
                   }

@@ -1,19 +1,20 @@
 {
   "schema_version": "gui-agent-memory-goal-state-v2",
-  "checkpoint_id": "2026-07-28T123302+0800",
-  "checkpoint_file": "research-ledger/checkpoints/2026-07-28T123302+0800-step1-round5-checkpoint.md",
+  "checkpoint_id": "2026-07-28T130324+0800",
+  "checkpoint_file": "research-ledger/checkpoints/2026-07-28T130324+0800-step1-round6-wip-checkpoint.md",
+  "latest_review": "refine-logs/round-6-stagea-semantic-adjudication-review.md",
   "workspace": "/Users/will/research/gui_agent_memory",
   "github_repository": "https://github.com/willwang2528/GUI-Agent-Research",
   "github_branch": "main",
   "github_sync": {
-    "status": "push_not_executed_approval_service_error",
-    "content_snapshot_commit": "00ce947fa20bf002d20838bc6ae515df131f4c9e",
+    "status": "pending_round6_checkpoint_push",
+    "content_snapshot_commit": null,
     "local_publishing_clone": "/private/tmp/gui-agent-research-publish.Uj54FM/repo",
     "local_branch_ahead_of_recorded_origin_main_by": 3,
     "recorded_origin_main": "4bbc0a365ee0fed121bc3ffef6ea1dd0e8732e40",
     "recorded_origin_main_may_be_stale": true,
-    "error": "Unknown parameter: input[13].namespace",
-    "next_command_when_approval_service_is_functional": "git push origin main"
+    "error": null,
+    "next_command": "sync workspace artifact set, commit Round 6 WIP checkpoint, then git push origin main"
   },
   "thread_id": "019f8362-0542-7fb3-86f5-1f64dc9e6761",
   "goal_status": "active",
@@ -26,7 +27,8 @@
     "FRAME-READY",
     "DETAIL-AVAILABILITY-PARTIAL",
     "MEASUREMENT IMPLEMENTATION NOT READY",
-    "SYNTHETIC MECHANICS ONLY",
+    "STAGE A V2 WIP TEST MIGRATION REQUIRED",
+    "ARCHIVED SOURCE PROJECTION VERIFIED WITH PARTIAL AUTHORITY",
     "NO SYNTHETIC FREEZE",
     "NO BLOCK A",
     "NO STEP 1 GO"
@@ -34,9 +36,14 @@
   "established": [
     "OSWorld 2.0 catalog and confirmatory frames are frozen at 648 and 492 cells",
     "Block A availability is 47 replay-bearing pages plus one explicit no-step page with 9138 embedded steps",
-    "full-block Stage A X58-X60 fixes pass 79 implementation tests and 27 strict schema compilations",
+    "the pre-v2 Stage A X58-X60 snapshot passed 79 implementation tests and was independently replayed",
     "bounds and certificate synthetic mechanics pass 33 root tests",
     "an independent bounded reviewer accepted 22 bounds replays as synthetic mechanics only",
+    "X62 independently proves that Stage A v1 cannot preserve or adjudicate substantive A0 disagreement",
+    "X63 independently proves that unanimous packet claims need not be semantically entailed by referenced evidence",
+    "X64 independently proves that rejected dispositions can erase an event, its A1 path, and the scientific denominator while v1 still passes",
+    "a real OSWorld2 archived-source projection adapter deterministically verifies 48 HTML pages, 47 replay-bearing pages, one explicit no-step page, and 9138 steps with 12 tests passing",
+    "Stage A v2 schema and validator edits are syntactically valid WIP, but the old builders currently produce 70 failures and one error across 79 Stage A tests",
     "Python 3.12.13 interpreter and project venv exist"
   ],
   "not_established": [
@@ -52,18 +59,20 @@
     "Python 3.12 dependency reproducibility"
   ],
   "active_blockers": [
-    "fresh independent replay of Stage A X58-X60 and positive disagreement controls is pending",
-    "real published-source parser and content-fidelity authority are absent",
+    "Stage A v2 builders, fixtures, positive controls, and X62-X64/R-series negative controls are not migrated; the current Stage A test suite fails by design of this WIP checkpoint",
+    "the archived HTML parser exists, but screenshot-byte fidelity, initial pre-action observation, publication chronology, and full production content authority remain absent",
     "nonrollback pre-reveal commit receipts and trusted clock are absent",
     "trusted access logs and role-history checkpoint authority are absent",
     "release-tagged obligation, identity, config-family, and mapping commitments are absent",
     "real proof semantics and trusted large-world solver are absent",
-    "exact Stage 0F dependencies are not installed in the Python 3.12 venv because the approval service rejected network execution before it ran",
-    "GitHub push was rejected by the same approval-service error before git executed; the remote update is unconfirmed"
+    "exact Stage 0F dependencies are not installed in the Python 3.12 venv because the earlier approval service rejected network execution before it ran",
+    "the Round 6 WIP checkpoint has not yet been confirmed on GitHub at the time this state file was written"
   ],
   "next_actions_in_order": [
-    "when the approval service is functional, run only git push origin main from the recorded publishing clone and verify the remote ref",
-    "run a fresh independent Stage A replay for X58-X60 and the valid raw-source disagreement positive control",
+    "migrate Stage A synthetic builders and fixtures to the v2 R/C/P/E/M contract",
+    "implement X62-X64 plus R02/R04/R05/R06/R07/R09/R10/R12/R15 acceptance and rejection tests",
+    "run the complete Stage A suite, Ajv strict compilation, py_compile, and an independent executable red-team",
+    "independently audit the scoped real OSWorld2 archived-source projection adapter without upgrading production authority",
     "install requirements-stage0f.txt into .venv-stage0f-py312 and run pip check plus the complete validation suite",
     "implement fail-closed real authority adapters for content fidelity, temporal precedence, access completeness, role history, and frozen universes",
     "obtain fresh adversarial acceptance for the integrated production measurement path",
@@ -71,5 +80,5 @@
     "only after all preregistered gates permit it generate real Block A packets",
     "use Block A and later confirmatory evidence to decide Step 1 before unlocking Steps 2-7"
   ],
-  "resume_rule": "Read this JSON and its checkpoint first. Do not restart a broad literature survey. Do not treat test success as evidence that the natural GUI burden exists. Do not run Block A or unlock Step 2 before Step 1 GO."
+  "resume_rule": "Read this JSON and its checkpoint first. Resume with Stage A v2 builder/fixture migration, not a broad literature survey. The current Stage A suite is intentionally red at 70 failures and one error. Do not treat archived-source or synthetic test success as evidence that the natural GUI burden exists. Do not run Block A or unlock Step 2 before Step 1 GO."
 }
